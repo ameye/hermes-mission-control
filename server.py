@@ -101,6 +101,52 @@ def _ts_to_rel(ts: Optional[float]) -> str:
 # ── API Endpoints ───────────────────────────────────────────────────────
 
 
+@app.get("/api/diagnose")
+async def api_diagnose():
+    """Diagnose why data isn't loading — helpful when volume mount is wrong."""
+    issues = []
+    warnings = []
+
+    # Check HERMES_HOME
+    hermes_home = str(HERMES_HOME)
+    home_exists = HERMES_HOME.exists()
+
+    if not home_exists:
+        issues.append(f"Directory {hermes_home} does not exist inside the container.")
+        issues.append("This means the volume mount is not working or pointing to the wrong path.")
+    else:
+        # Check what's in the directory
+        items = list(HERMES_HOME.iterdir())
+        if not items:
+            issues.append(f"Directory {hermes_home} is empty.")
+            issues.append("The volume mount is pointing to an empty directory on the host.")
+        else:
+            warnings.append(f"Found {len(items)} items in {hermes_home}, but some data may be missing.")
+
+        # Check for state.db
+        state_db = HERMES_HOME / "state.db"
+        if not state_db.exists():
+            issues.append(f"Missing state.db — no session data available.")
+        
+        # Check for profiles
+        if not PROFILES_DIR.exists():
+            issues.append(f"Missing profiles directory — no multi-agent data.")
+        
+        # Check for gateway state
+        gw = HERMES_HOME / "gateway_state.json"
+        if not gw.exists():
+            warnings.append(f"Missing gateway_state.json — gateway status unknown.")
+
+    return {
+        "hermes_home": hermes_home,
+        "directory_exists": home_exists,
+        "is_empty": home_exists and len(list(HERMES_HOME.iterdir())) == 0 if home_exists else True,
+        "issues": issues,
+        "warnings": warnings,
+        "fix_hint": "In Coolify, go to your service → Persistent Storage → add a volume: "
+                    "Host path = /home/hermeswebui/.hermes  |  Container path = /data/hermes  |  Read-only = ON"
+                    if not home_exists or (home_exists and len(list(HERMES_HOME.iterdir())) == 0) else None,
+    }
 @app.get("/health")
 async def health():
     """Fast health check — no DB queries, just confirms server is alive."""
