@@ -398,7 +398,239 @@
         </div>
       </div>
 
-      <!-- Loading Skeleton -->
+      <!--         <!-- ═══ BRAIN ═══ -->
+        <div x-show="activeTab === 'brain'" class="tab-content" :class="tabAnimClass">
+          <div class="grid grid-cols-1 lg:grid-cols-3 gap-5 mb-6">
+            <div class="glass-card p-5 stagger-item">
+              <div class="text-white/35 text-[10px] font-medium uppercase tracking-widest mb-3">🧠 Knowledge Base</div>
+              <div class="text-3xl font-bold" x-text="brainData.total_pages"></div>
+              <div class="text-xs text-white/35 mt-1">total pages</div>
+            </div>
+            <div class="glass-card p-5 stagger-item" style="animation-delay:60ms">
+              <div class="text-white/35 text-[10px] font-medium uppercase tracking-widest mb-3">📂 Categories</div>
+              <div class="text-3xl font-bold" x-text="brainData.categories?.length || 0"></div>
+              <div class="text-xs text-white/35 mt-1">knowledge domains</div>
+            </div>
+            <div class="glass-card p-5 stagger-item" style="animation-delay:120ms">
+              <div class="text-white/35 text-[10px] font-medium uppercase tracking-widest mb-3">🔗 Connections</div>
+              <div class="text-3xl font-bold" x-text="brainTotalLinks"></div>
+              <div class="text-xs text-white/35 mt-1">cross-page links</div>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-1 lg:grid-cols-2 gap-5 mb-6">
+            <!-- Category Treemap -->
+            <div class="glass-card p-5 stagger-item">
+              <h3 class="text-white/35 text-[10px] font-medium uppercase tracking-widest mb-4">Categories</h3>
+              <div class="space-y-2">
+                <template x-for="(cat, i) in brainData.categories" :key="cat.name">
+                  <div class="flex items-center justify-between stagger-item" :style="'animation-delay:'+(i*30)+'ms'">
+                    <div class="flex items-center gap-2">
+                      <div class="w-2 h-2 rounded-full" :style="'background:'+catColor(cat.name)"></div>
+                      <span class="text-sm capitalize" x-text="cat.name"></span>
+                    </div>
+                    <span class="text-xs text-white/30 mono" x-text="cat.count + ' pages'"></span>
+                  </div>
+                </template>
+              </div>
+            </div>
+
+            <!-- Brain Pages List -->
+            <div class="glass-card p-5 scanline stagger-item" style="animation-delay:60ms">
+              <h3 class="text-white/35 text-[10px] font-medium uppercase tracking-widest mb-4">All Pages</h3>
+              <div class="space-y-1.5 max-h-80 overflow-y-auto scrollbar-thin">
+                <template x-for="(pg, i) in brainData.pages" :key="pg.path">
+                  <div class="flex items-center justify-between p-2 rounded-lg hover:bg-white/[0.02] cursor-pointer transition-colors stagger-item" :style="'animation-delay:'+(i*20)+'ms'" @click="openBrainPage(pg.path)">
+                    <div class="flex items-center gap-2 min-w-0">
+                      <span class="text-xs px-1.5 py-0.5 rounded-full capitalize font-medium shrink-0" :style="'background:'+catColor(pg.category)+'15;color:'+catColor(pg.category)" x-text="pg.category"></span>
+                      <span class="text-sm truncate" x-text="pg.title"></span>
+                    </div>
+                    <div class="flex items-center gap-2 text-xs text-white/25 shrink-0">
+                      <span x-show="pg.links > 0" x-text="pg.links + ' 🔗'"></span>
+                      <span x-text="(pg.size/1024).toFixed(1)+'KB'"></span>
+                    </div>
+                  </div>
+                </template>
+              </div>
+            </div>
+          </div>
+
+          <!-- Page Viewer Modal -->
+          <template x-if="brainPageOpen && brainPageContent">
+            <div class="glass-card p-6 mb-6">
+              <div class="flex items-center justify-between mb-4">
+                <div class="flex items-center gap-2">
+                  <span class="text-sm font-medium" x-text="brainPagePath"></span>
+                  <span class="text-xs text-white/30 mono" x-text="brainPageContent.links?.length + ' links'"></span>
+                </div>
+                <button @click="brainPageOpen=false" class="text-white/30 hover:text-white text-xs">✕ Close</button>
+              </div>
+              <div class="prose prose-invert max-w-none text-sm text-white/70 leading-relaxed whitespace-pre-wrap max-h-96 overflow-y-auto scrollbar-thin bg-white/[0.02] rounded-xl p-4" x-text="brainPageContent.content"></div>
+            </div>
+          </template>
+
+          <!-- Graph placeholder -->
+          <div class="glass-card p-5 stagger-item">
+            <h3 class="text-white/35 text-[10px] font-medium uppercase tracking-widest mb-3">Knowledge Graph</h3>
+            <div class="flex items-center justify-center h-48 text-white/20 text-sm">
+              <span>🌐 Knowledge graph visualization coming soon</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- ═══ ANALYTICS ═══ -->
+        <div x-show="activeTab === 'analytics'" class="tab-content" :class="tabAnimClass">
+          <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+            <div class="glass-card p-5 stagger-item">
+              <div class="text-white/35 text-[10px] font-medium uppercase tracking-widest mb-1">Total Sessions</div>
+              <div class="text-2xl font-bold" x-text="analyticsData.totals?.sessions || 0"></div>
+            </div>
+            <div class="glass-card p-5 stagger-item" style="animation-delay:60ms">
+              <div class="text-white/35 text-[10px] font-medium uppercase tracking-widest mb-1">Total Tokens</div>
+              <div class="text-2xl font-bold mono text-sm" x-text="formatNum(analyticsData.totals?.tokens || 0)"></div>
+            </div>
+            <div class="glass-card p-5 stagger-item" style="animation-delay:120ms">
+              <div class="text-white/35 text-[10px] font-medium uppercase tracking-widest mb-1">Input Tokens</div>
+              <div class="text-2xl font-bold mono text-sm" x-text="formatNum(analyticsTotals.input)"></div>
+            </div>
+            <div class="glass-card p-5 stagger-item" style="animation-delay:180ms">
+              <div class="text-white/35 text-[10px] font-medium uppercase tracking-widest mb-1">Output Tokens</div>
+              <div class="text-2xl font-bold mono text-sm" x-text="formatNum(analyticsTotals.output)"></div>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-1 lg:grid-cols-2 gap-5 mb-6">
+            <!-- Daily Token Usage Chart -->
+            <div class="glass-card p-5 stagger-item">
+              <h3 class="text-white/35 text-[10px] font-medium uppercase tracking-widest mb-4">📈 Daily Token Usage (14 days)</h3>
+              <div class="h-40" x-show="analyticsDaily.length > 0">
+                <svg class="w-full h-full" viewBox="0 0 280 100" preserveAspectRatio="none">
+                  <path :d="chartLine(analyticsDailyTokens, 280, 100, 'tokens')" fill="none" stroke="#a78bfa" stroke-width="2" style="filter:drop-shadow(0 0 6px rgba(139,92,246,0.3))"/>
+                  <path :d="chartFill(analyticsDailyTokens, 280, 100, 'tokens')" fill="url(#tokenGrad)" opacity="0.3"/>
+                  <defs><linearGradient id="tokenGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#a78bfa"/><stop offset="1" stop-color="#a78bfa" stop-opacity="0"/></linearGradient></defs>
+                </svg>
+              </div>
+              <div x-show="analyticsDaily.length === 0" class="h-40 flex items-center justify-center text-white/20 text-sm">No daily data yet</div>
+              <div class="flex justify-between text-[10px] text-white/25 mt-1">
+                <template x-for="(d, i) in analyticsDaily.slice(0,7)" :key="d.day">
+                  <span x-text="d.day?.slice(5)"></span>
+                </template>
+              </div>
+            </div>
+
+            <!-- Model Distribution -->
+            <div class="glass-card p-5 stagger-item" style="animation-delay:60ms">
+              <h3 class="text-white/35 text-[10px] font-medium uppercase tracking-widest mb-4">🎯 Model Distribution</h3>
+              <div class="space-y-3">
+                <template x-for="(m, i) in analyticsModels" :key="m.model">
+                  <div class="stagger-item" :style="'animation-delay:'+(i*50)+'ms'">
+                    <div class="flex items-center justify-between mb-1">
+                      <span class="text-sm mono text-xs" x-text="m.model"></span>
+                      <span class="text-xs text-white/40" x-text="formatNum(m.tokens) + ' (' + (m.tokens/(analyticsData.totals?.tokens||1)*100).toFixed(0) + '%)'"></span>
+                    </div>
+                    <div class="w-full h-2 rounded-full bg-white/5 overflow-hidden">
+                      <div class="h-full rounded-full transition-all duration-700" :style="'width:'+(m.tokens/(analyticsData.totals?.tokens||1)*100)+'%'" :class="'bg-'+modelColor(m.model)"></div>
+                    </div>
+                    <div class="flex justify-between text-[10px] text-white/25 mt-0.5">
+                      <span x-text="m.sessions + ' sessions'"></span>
+                      <span x-text="'$'+(m.cost||0).toFixed(4)"></span>
+                    </div>
+                  </div>
+                </template>
+              </div>
+            </div>
+          </div>
+
+          <!-- Session distribution by profile -->
+          <div class="glass-card p-5 stagger-item">
+            <h3 class="text-white/35 text-[10px] font-medium uppercase tracking-widest mb-4">📊 Sessions by Profile</h3>
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+              <template x-for="(p, i) in analyticsProfiles" :key="p.name">
+                <div class="glass rounded-xl p-3 stagger-item" :style="'animation-delay:'+(i*40)+'ms'">
+                  <div class="text-xs text-white/40 uppercase tracking-wider mb-1 capitalize" x-text="p.name"></div>
+                  <div class="text-lg font-bold" x-text="p.totals?.sessions || 0"></div>
+                  <div class="text-[10px] text-white/30 mono" x-text="formatNum(p.totals?.tokens || 0) + ' tokens'"></div>
+                </div>
+              </template>
+            </div>
+          </div>
+        </div>
+
+        <!-- ═══ SEARCH ═══ -->
+        <div x-show="activeTab === 'search'" class="tab-content" :class="tabAnimClass">
+          <div class="glass-card p-5 mb-6">
+            <div class="flex items-center gap-3">
+              <input type="text" x-model="searchQuery" @keydown.enter="doSearch" placeholder="Search across all sessions..." class="flex-1 bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder-white/20 outline-none focus:border-violet-500/40 focus:bg-white/[0.04] transition-all">
+              <button @click="doSearch" class="px-5 py-3 rounded-xl bg-violet-500/10 text-violet-300 border border-violet-500/20 hover:bg-violet-500/20 transition-all text-sm font-medium">Search</button>
+            </div>
+            <div class="text-xs text-white/25 mt-2" x-show="searchResults.total > 0" x-text="searchResults.total + ' results'"></div>
+          </div>
+
+          <div class="space-y-2" x-show="searchResults.results?.length > 0">
+            <template x-for="(r, i) in searchResults.results" :key="r.id + r.title">
+              <div class="glass-card p-4 stagger-item" :style="'animation-delay:'+(i*30)+'ms'">
+                <div class="flex items-start justify-between gap-3">
+                  <div class="min-w-0 flex-1">
+                    <div class="flex items-center gap-2 mb-1">
+                      <span class="text-[10px] px-1.5 py-0.5 rounded capitalize font-medium" :class="r.profile === 'default' ? 'bg-violet-500/10 text-violet-300' : 'bg-emerald-500/10 text-emerald-300'" x-text="r.profile"></span>
+                      <span class="text-sm font-medium truncate" x-text="r.title?.slice(0, 120)"></span>
+                    </div>
+                    <div class="flex gap-3 text-[11px] text-white/30">
+                      <span x-text="r.source"></span>
+                      <span x-show="r.message_count > 0" x-text="r.message_count + ' msgs'"></span>
+                    </div>
+                  </div>
+                  <span class="text-[10px] text-white/25 shrink-0" x-text="r.started_at"></span>
+                </div>
+              </div>
+            </template>
+          </div>
+          <div x-show="searchResults.total === 0 && searchResults.searched" class="text-white/25 text-sm py-8 text-center">No results found</div>
+        </div>
+
+        <!-- ═══ FILES ═══ -->
+        <div x-show="activeTab === 'files'" class="tab-content" :class="tabAnimClass">
+          <div class="glass-card p-5 mb-6">
+            <div class="flex items-center gap-2 mb-3">
+              <span>📁</span>
+              <h2 class="font-semibold">Workspace Files</h2>
+            </div>
+            <div class="flex flex-wrap gap-2 mb-4">
+              <template x-for="ws in workspaceData.workspaces" :key="ws.name">
+                <button class="px-3 py-1.5 rounded-lg text-xs font-medium transition-all" :class="selectedWorkspace === ws.name ? 'bg-violet-500/15 text-violet-300 border border-violet-500/25' : 'bg-white/5 text-white/40 hover:bg-white/10 border border-white/5'" @click="selectedWorkspace = ws.name" x-text="ws.name + ' (' + ws.total_files + ')'"></button>
+              </template>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3" x-show="selectedWorkspaceFiles.length > 0">
+            <template x-for="(f, i) in selectedWorkspaceFiles" :key="f.path">
+              <div class="glass-card p-3 cursor-pointer hover:bg-white/[0.04] stagger-item" :style="'animation-delay:'+(i*30)+'ms'" @click="openWorkspaceFile(f.path)">
+                <div class="flex items-center gap-2">
+                  <span class="text-lg" x-text="fileIcon(f.ext)"></span>
+                  <div class="min-w-0">
+                    <div class="text-sm truncate" x-text="f.name"></div>
+                    <div class="text-[10px] text-white/30" x-text="(f.size/1024).toFixed(1) + ' KB'"></div>
+                  </div>
+                </div>
+              </div>
+            </template>
+          </div>
+          <div x-show="workspaceData.workspaces?.length > 0 && selectedWorkspaceFiles.length === 0" class="text-white/25 text-sm py-8 text-center">Select a workspace above</div>
+          <div x-show="!workspaceData.enabled" class="text-white/25 text-sm py-8 text-center">Workspace directory not accessible</div>
+
+          <!-- File Preview Modal -->
+          <template x-if="workspaceFileOpen && workspaceFileContent">
+            <div class="glass-card p-5 mt-4">
+              <div class="flex items-center justify-between mb-3">
+                <span class="text-sm font-medium mono" x-text="workspaceFilePath"></span>
+                <button @click="workspaceFileOpen=false" class="text-white/30 hover:text-white text-xs">✕ Close</button>
+              </div>
+              <pre class="text-xs text-white/60 leading-relaxed whitespace-pre-wrap max-h-96 overflow-y-auto scrollbar-thin bg-white/[0.02] rounded-xl p-4" x-text="workspaceFileContent"></pre>
+            </div>
+          </template>
+        </div>
+
+Loading Skeleton -->
       <div x-show="loading" class="space-y-6">
         <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
           <template x-for="i in 4" :key="i">
@@ -520,8 +752,12 @@
         tabs: [
           { id: 'fleet',     label: '🚀 Fleet' },
           { id: 'pipeline',  label: '🔗 Pipeline' },
+          { id: 'brain',     label: '🧠 Brain' },
+          { id: 'analytics', label: '📊 Analytics' },
           { id: 'cron',      label: '⏰ Cron' },
           { id: 'gateway',   label: '📡 Gateway' },
+          { id: 'search',    label: '🔍 Search' },
+          { id: 'files',     label: '📁 Files' },
           { id: 'system',    label: '⚙️ System' },
         ],
         // Data
@@ -535,6 +771,19 @@
         activityFeed: [],
         // Sparkline dummy data (will be replaced by real data)
         tokenHistory: [],
+        // New tabs data
+        brainData: { pages: [], categories: [], total_pages: 0 },
+        brainPageOpen: false,
+        brainPageContent: null,
+        brainPagePath: '',
+        analyticsData: { totals: {}, by_model: [], daily: [], profiles: [] },
+        searchQuery: '',
+        searchResults: { results: [], total: 0, searched: false },
+        workspaceData: { enabled: false, workspaces: [] },
+        selectedWorkspace: '',
+        workspaceFileOpen: false,
+        workspaceFileContent: null,
+        workspaceFilePath: '',
 
         // ── Computed ──
         get fleetStats() {
@@ -556,6 +805,31 @@
         get maxTokens() {
           const p = this.fleetProfiles;
           return Math.max(...p.map(pr => pr.tokens || 0), 1);
+        },
+        // Brain computed
+        get brainTotalLinks() {
+          const p = this.brainData.pages || [];
+          return p.reduce((s, pg) => s + (pg.links || 0), 0);
+        },
+        // Analytics computed
+        get analyticsTotals() {
+          const t = this.analyticsData.totals || {};
+          return {
+            input: t.input_tokens || 0,
+            output: t.output_tokens || 0,
+          };
+        },
+        get analyticsDaily() { return this.analyticsData.daily || []; },
+        get analyticsDailyTokens() {
+          const d = this.analyticsDaily;
+          return d.map(x => ({ day: x.day, value: x.tokens || 0 }));
+        },
+        get analyticsModels() { return this.analyticsData.by_model || []; },
+        get analyticsProfiles() { return this.analyticsData.profiles || []; },
+        // Files computed
+        get selectedWorkspaceFiles() {
+          const ws = this.workspaceData.workspaces?.find(w => w.name === this.selectedWorkspace);
+          return ws?.files || [];
         },
         get pipelineMain() { return this.pipelineStages.slice(0, 2); },
         get gatewayPlatforms() { return this.gatewayData.gateway?.platforms || null; },
@@ -598,7 +872,62 @@
         },
 
         // ── API ──
+        // ── Helper Functions ──
+        catColor(cat) {
+          const colors = {root:'#a78bfa',writing:'#34d399',people:'#fbbf24',ideas:'#38bdf8',
+            concepts:'#fb7185',projects:'#60a5fa',archive:'#94a3b8',civic:'#22d3ee',
+            companies:'#c084fc',deals:'#f472b6',hiring:'#34d399',household:'#14b8a6',
+            inbox:'#e879f9',media:'#38bdf8',meetings:'#fbbf24',org:'#a78bfa',
+            personal:'#fb923c',programs:'#22d3ee',prompts:'#c084fc',sources:'#94a3b8',
+            templates:'#64748b'};
+          return colors[cat] || '#94a3b8';
+        },
+        modelColor(m) {
+          if (!m) return 'bg-violet-500';
+          const l = m.toLowerCase();
+          if (l.includes('deepseek')) return 'bg-violet-500';
+          if (l.includes('gemini')) return 'bg-cyan-500';
+          if (l.includes('gpt') || l.includes('openai')) return 'bg-emerald-500';
+          if (l.includes('claude') || l.includes('anthropic')) return 'bg-amber-500';
+          return 'bg-violet-500';
+        },
+        fileIcon(ext) {
+          const icons = {'.md':'📝','.py':'🐍','.js':'📜','.ts':'📘','.json':'📋','.yaml':'⚙️','.yml':'⚙️',
+            '.html':'🌐','.css':'🎨','.png':'🖼️','.jpg':'🖼️','.jpeg':'🖼️','.svg':'📐','.pdf':'📄',
+            '.mp4':'🎬','.pptx':'📊','.txt':'📃','.csv':'📊','.env':'🔑','.sh':'💻'};
+          return icons[ext] || '📄';
+        },
         async fetchAPI(url) { try { const r = await fetch(url); return await r.json(); } catch { return null; } },
+        chartLine(data, w, h, key) {
+          if (!data || data.length < 2) return '';
+          const values = data.map(d => d[key] || 0);
+          const min = Math.min(...values), max = Math.max(...values);
+          const range = max - min || 1;
+          const step = w / (data.length - 1);
+          return values.map((v, i) => `${i===0?'M':'L'}${i*step},${h-((v-min)/range)*(h-10)-5}`).join(' ');
+        },
+        chartFill(data, w, h, key) {
+          if (!data || data.length < 2) return '';
+          const values = data.map(d => d[key] || 0);
+          const min = Math.min(...values), max = Math.max(...values);
+          const range = max - min || 1;
+          const step = w / (data.length - 1);
+          const line = values.map((v, i) => `${i===0?'L':'L'}${i*step},${h-((v-min)/range)*(h-10)-5}`).join(' ');
+          return `M0,${h}${line}L${w},${h}Z`;
+        },
+        async doSearch() {
+          if (!this.searchQuery.trim()) return;
+          const res = await this.fetchAPI('/api/search?q=' + encodeURIComponent(this.searchQuery));
+          if (res) { this.searchResults = res; this.searchResults.searched = true; }
+        },
+        async openBrainPage(path) {
+          const res = await this.fetchAPI('/api/brain/page?path=' + encodeURIComponent(path));
+          if (res && res.content) { this.brainPageContent = res; this.brainPagePath = path; this.brainPageOpen = true; }
+        },
+        async openWorkspaceFile(path) {
+          const res = await this.fetchAPI('/api/workspace/file?path=' + encodeURIComponent(path));
+          if (res && res.content) { this.workspaceFileContent = res.content; this.workspaceFilePath = path; this.workspaceFileOpen = true; }
+        },
 
         async fetchAll() {
           const [fleet, gateway, cron, pipeline, system, activity] = await Promise.all([
@@ -615,6 +944,13 @@
           }
           if (system) this.systemData = system;
           if (activity) this.activityFeed = activity.events || [];
+          // New tabs
+          const brain = await this.fetchAPI('/api/brain');
+          if (brain) this.brainData = brain;
+          const analytics = await this.fetchAPI('/api/analytics/tokens');
+          if (analytics) this.analyticsData = analytics;
+          const workspaces = await this.fetchAPI('/api/workspaces');
+          if (workspaces) this.workspaceData = workspaces;
           this.connected = true; this.loading = false;
           this.lastUpdate = new Date().toLocaleTimeString();
         },
@@ -645,6 +981,10 @@
               if (d.fleet) { this.fleetRaw = d.fleet; this.genSparklines(); }
               if (d.gateway) this.gatewayData = d.gateway;
               if (d.system) this.systemData = d.system;
+              const brain = await this.fetchAPI('/api/brain');
+              if (brain) this.brainData = brain;
+              const analytics = await this.fetchAPI('/api/analytics/tokens');
+              if (analytics) this.analyticsData = analytics;
               this.connected = true; this.loading = false;
               this.lastUpdate = new Date().toLocaleTimeString();
             } catch {}

@@ -566,6 +566,283 @@ async def api_kanban():
     return {"items": items, "tables": [c["name"] for c in columns]}
 
 
+# ── Brain Knowledge Base ────────────────────────────────────────────────
+
+
+BRAIN_DIR = HERMES_HOME / "home" / "brain"
+BRAIN_ENABLED = BRAIN_DIR.exists() and any(BRAIN_DIR.iterdir())
+
+
+@app.get("/api/brain")
+async def api_brain():
+    """Return brain knowledge base overview."""
+    if not BRAIN_ENABLED:
+        return {"enabled": False, "total_pages": 0, "categories": []}
+    import re
+    pages = []
+    categories = {}
+    for root, dirs, files in os.walk(BRAIN_DIR):
+        for f in files:
+            if not f.endswith(".md"):
+                continue
+            fp = Path(root) / f
+            rel = fp.relative_to(BRAIN_DIR)
+            cat = str(rel.parent) if rel.parent.name != "." else "root"
+            content = fp.read_text(encoding="utf-8", errors="replace")
+            title_match = re.search(r"^#\s+(.+)$", content, re.MULTILINE)
+            title = title_match.group(1).strip() if title_match else f.replace(".md", "")
+            links = re.findall(r"\[\[([^\]]+)\]\]", content)
+            pages.append({
+                "path": str(rel), "title": title, "category": cat,
+                "size": len(content), "links": len(links),
+            })
+            if cat not in categories:
+                categories[cat] = {"count": 0, "total_size": 0}
+            categories[cat]["count"] += 1
+            categories[cat]["total_size"] += len(content)
+
+    recent = sorted(pages, key=lambda p: p["size"], reverse=True)[:5]
+    cat_list = [{"name": k, **v} for k, v in sorted(categories.items())]
+    return {
+        "enabled": True, "total_pages": len(pages),
+        "categories": cat_list, "recent": recent, "pages": pages,
+    }
+
+
+@app.get("/api/brain/graph")
+async def api_brain_graph():
+    """Return node-edge graph data for brain visualization."""
+    if not BRAIN_ENABLED:
+        return {"nodes": [], "edges": []}
+    import re
+    nodes = []
+    edges = []
+    for root, dirs, files in os.walk(BRAIN_DIR):
+        for f in files:
+            if not f.endswith(".md"):
+                continue
+            fp = Path(root) / f
+            rel = str(fp.relative_to(BRAIN_DIR))
+            content = fp.read_text(encoding="utf-8", errors="replace")
+            title_match = re.search(r"^#\s+(.+)$", content, re.MULTILINE)
+            title = title_match.group(1).strip() if title_match else f.replace(".md", "")
+            cat = rel.split("/")[0]
+            nodes.append({"id": rel, "title": title, "category": cat, "size": min(len(content) / 100, 20)})
+            for link in re.findall(r"\[\[([^\]]+)\]\]", content):
+                edges.append({"source": rel, "target": link})
+
+    return {"nodes": nodes, "edges": edges}
+
+
+@app.get("/api/brain/page")
+async def api_brain_page(path: str = Query("index.md")):
+    """Return a brain page's markdown content."""
+    import re
+    fp = BRAIN_DIR / path
+    resolved = fp.resolve()
+    if not resolved.exists() or not str(resolved).startswith(str(BRAIN_DIR.resolve())):
+        return {"error": "Page not found"}, 404
+    content = resolved.read_text(encoding="utf-8", errors="replace")
+    links = re.findall(r"\[\[([^\]]+)\]\]", content)
+    return {"path": path, "content": content, "links": links}
+
+
+# ── Token Analytics ────────────────────────────────────────────────────
+
+
+@app.get("/api/analytics/tokens")
+async def api_analytics_tokens():
+    """Return token/cost analytics across all profiles."""
+    profiles_data = []
+
+    for profile_name in ["default"] + sorted(
+        p.name for p in PROFILES_DIR.iterdir() if p.is_dir()
+    ):
+        db_path = HERMES_HOME / "state.db" if profile_name == "default" else PROFILES_DIR / profile_name / "state.db"
+        if not db_path.exists():
+            continue
+
+        # By model
+        by_model = _query_db(db_path,
+            "SELECT model, COUNT(*) as sessions, "
+            "COALESCE(SUM(input_tokens+output_tokens),0) as tokens, "
+            "COALESCE(SUM(estimated_cost_usd),0) as cost "
+            "FROM sessions WHERE model IS NOT NULL AND model != '' "
+            "GROUP BY model ORDER BY tokens DESC")
+
+        # Daily trends (last 14 days)
+        daily = _query_db(db_path,
+            "SELECT date(datetime(started_at, 'unixepoch')) as day, "
+            "COALESCE(SUM(input_tokens+output_tokens),0) as tokens, "
+            "COUNT(*) as sessions "
+            "FROM sessions WHERE started_at IS NOT NULL "
+            "AND started_at > ? "
+            "GROUP BY day ORDER BY day",
+            (time.time() - 14 * 86400,))
+
+        totals = _query_db(db_path,
+            "SELECT COUNT(*) as sessions, "
+            "COALESCE(SUM(input_tokens+output_tokens),0) as tokens, "
+            "COALESCE(SUM(estimated_cost_usd),0) as cost, "
+            "COALESCE(SUM(input_tokens),0) as input_tokens, "
+            "COALESCE(SUM(output_tokens),0) as output_tokens "
+            "FROM sessions")[0]
+
+        profiles_data.append({
+            "name": profile_name,
+            "totals": totals,
+            "by_model": by_model,
+            "daily": daily,
+        })
+
+    # Aggregate across all profiles
+    total_sessions = sum(p["totals"]["sessions"] for p in profiles_data)
+    total_tokens = sum(p["totals"]["tokens"] for p in profiles_data)
+    total_cost = sum(p["totals"]["cost"] for p in profiles_data)
+
+    # Aggregate daily
+    daily_map = {}
+    for p in profiles_data:
+        for d in p.get("daily", []):
+            day = d["day"]
+            if day not in daily_map:
+                daily_map[day] = {"tokens": 0, "sessions": 0}
+            daily_map[day]["tokens"] += d["tokens"]
+            daily_map[day]["sessions"] += d["sessions"]
+    daily_all = sorted(
+        [{"day": k, **v} for k, v in daily_map.items()],
+        key=lambda x: x["day"]
+    )
+
+    # Aggregate by model
+    model_map = {}
+    for p in profiles_data:
+        for m in p.get("by_model", []):
+            name = m.get("model", "unknown")
+            if name not in model_map:
+                model_map[name] = {"sessions": 0, "tokens": 0, "cost": 0}
+            model_map[name]["sessions"] += m["sessions"]
+            model_map[name]["tokens"] += m["tokens"]
+            model_map[name]["cost"] += m["cost"] or 0
+    by_model_all = sorted(
+        [{"model": k, **v} for k, v in model_map.items()],
+        key=lambda x: x["tokens"], reverse=True
+    )
+
+    return {
+        "profiles": profiles_data,
+        "totals": {"sessions": total_sessions, "tokens": total_tokens, "cost": total_cost},
+        "by_model": by_model_all,
+        "daily": daily_all,
+    }
+
+
+# ── Cross-Session Search ────────────────────────────────────────────────
+
+
+@app.get("/api/search")
+async def api_search(q: str = Query("", min_length=1)):
+    """FTS5 search across all sessions."""
+    if not q.strip():
+        return {"results": [], "total": 0}
+
+    results = []
+    for profile_name in ["default"] + sorted(
+        p.name for p in PROFILES_DIR.iterdir() if p.is_dir()
+    ):
+        db_path = HERMES_HOME / "state.db" if profile_name == "default" else PROFILES_DIR / profile_name / "state.db"
+        if not db_path.exists():
+            continue
+
+        # Search sessions by title
+        sessions = _query_db(db_path,
+            "SELECT id, title, source, started_at, message_count, model "
+            "FROM sessions WHERE title IS NOT NULL AND title LIKE ? "
+            "ORDER BY started_at DESC LIMIT 20",
+            (f"%{q}%",)
+        )
+        for s in sessions:
+            results.append({"profile": profile_name, **s, "started_at": _ts_to_iso(s.get("started_at"))})
+
+        # Search message content via FTS5
+        try:
+            msgs = _query_db(db_path,
+                "SELECT m.session_id, substr(m.content, 1, 200) as snippet, m.role "
+                "FROM messages m "
+                "WHERE m.content LIKE ? "
+                "ORDER BY m.id DESC LIMIT 20",
+                (f"%{q}%",)
+            )
+            for m in msgs:
+                results.append({
+                    "profile": profile_name,
+                    "id": m.get("session_id", ""),
+                    "title": f"[{m.get('role', '?')}] {m.get('snippet', '')[:100]}",
+                    "source": "message",
+                    "started_at": "—",
+                    "message_count": 0,
+                    "model": m.get("role", ""),
+                })
+        except Exception:
+            pass
+
+    return {"results": sorted(results, key=lambda r: str(r.get("started_at", "")), reverse=True)[:50], "total": len(results)}
+
+
+# ── Workspace Browser ────────────────────────────────────────────────────
+
+
+WORKSPACE_DIR = Path("/workspace")
+if not WORKSPACE_DIR.exists():
+    WORKSPACE_DIR = HERMES_HOME.parent / "workspace"
+if not WORKSPACE_DIR.exists():
+    WORKSPACE_DIR = Path(os.environ.get("HERMES_WORKSPACE", "/workspace"))
+
+
+@app.get("/api/workspaces")
+async def api_workspaces():
+    """List workspaces and their files."""
+    if not WORKSPACE_DIR.exists():
+        return {"enabled": False, "workspaces": []}
+
+    workspaces = []
+    for item in WORKSPACE_DIR.iterdir():
+        if item.is_dir():
+            files = []
+            total_size = 0
+            file_count = 0
+            for f in item.rglob("*"):
+                if f.is_file() and file_count < 50:
+                    ext = f.suffix.lower()
+                    files.append({
+                        "name": f.name, "path": str(f.relative_to(WORKSPACE_DIR)),
+                        "size": f.stat().st_size, "ext": ext if ext else "none",
+                    })
+                    total_size += f.stat().st_size
+                    file_count += 1
+            workspaces.append({
+                "name": item.name,
+                "files": sorted(files, key=lambda x: x["size"], reverse=True)[:100],
+                "total_files": len(files),
+                "total_size": total_size,
+            })
+
+    return {"enabled": True, "workspaces": sorted(workspaces, key=lambda w: w["name"])}
+
+
+@app.get("/api/workspace/file")
+async def api_workspace_file(path: str = Query("")):
+    """Read a workspace file."""
+    fp = (WORKSPACE_DIR / path).resolve()
+    if not str(fp).startswith(str(WORKSPACE_DIR.resolve())) or not fp.exists() or not fp.is_file():
+        return {"error": "File not found"}, 404
+    try:
+        content = fp.read_text(encoding="utf-8", errors="replace")
+        return {"path": path, "content": content[:50000], "size": len(content)}
+    except Exception as e:
+        return {"error": str(e)}, 500
+
+
 # ── SSE endpoint ────────────────────────────────────────────────────────
 
 
