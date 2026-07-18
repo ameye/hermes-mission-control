@@ -5,14 +5,10 @@ services:
       dockerfile: Dockerfile
     container_name: hermes-mission-control
     restart: unless-stopped
-    user: "1000:1000"
     ports:
       - "2800:2800"
     volumes:
-      - type: bind
-        source: /home/hermeswebui/.hermes
-        target: /data/hermes
-        read_only: true
+      - hermes-live-data:/data/hermes:ro
     environment:
       - HERMES_HOME=/data/hermes
     healthcheck:
@@ -21,3 +17,7 @@ services:
       timeout: 3s
       retries: 3
       start_period: 3s
+
+volumes:
+  hermes-live-data:
+    external: true
