@@ -16,8 +16,8 @@ COPY server.py .
 COPY static/ ./static/
 
 # Create a non-root user
-RUN addgroup --system --gid 1001 hermes && \
-    adduser --system --uid 1001 hermes --ingroup hermes && \
+RUN addgroup --system --gid 1000 hermes && \
+    adduser --system --uid 1000 hermes --ingroup hermes && \
     chown -R hermes:hermes /app
 USER hermes
 
