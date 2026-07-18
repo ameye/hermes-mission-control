@@ -1,0 +1,592 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Hermes Mission Control</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap');
+    * { font-family: 'Inter', system-ui, sans-serif; }
+    .mono { font-family: 'JetBrains Mono', monospace; }
+    body { background: #0a0a0f; background-image: radial-gradient(ellipse at 20% 50%, rgba(88, 28, 135, 0.12) 0%, transparent 50%), radial-gradient(ellipse at 80% 20%, rgba(14, 116, 144, 0.08) 0%, transparent 50%), radial-gradient(ellipse at 50% 80%, rgba(6, 78, 59, 0.06) 0%, transparent 50%); }
+    .glass { background: rgba(255,255,255,0.04); backdrop-filter: blur(20px); border: 1px solid rgba(255,255,255,0.06); }
+    .glass-hover:hover { background: rgba(255,255,255,0.08); border-color: rgba(255,255,255,0.12); }
+    .glass-card { background: rgba(255,255,255,0.03); backdrop-filter: blur(12px); border: 1px solid rgba(255,255,255,0.06); border-radius: 16px; transition: all 0.3s ease; }
+    .glass-card:hover { background: rgba(255,255,255,0.06); border-color: rgba(255,255,255,0.12); transform: translateY(-2px); box-shadow: 0 8px 32px rgba(0,0,0,0.3); }
+    .glow { box-shadow: 0 0 24px rgba(88, 28, 135, 0.15), 0 0 80px rgba(88, 28, 135, 0.05); }
+    .glow-green { box-shadow: 0 0 20px rgba(52, 211, 153, 0.1); }
+    .glow-amber { box-shadow: 0 0 20px rgba(251, 191, 36, 0.1); }
+    .nav-tab { padding: 8px 20px; border-radius: 10px; cursor: pointer; transition: all 0.2s; font-weight: 500; font-size: 0.9rem; color: rgba(255,255,255,0.5); }
+    .nav-tab:hover { color: rgba(255,255,255,0.8); background: rgba(255,255,255,0.04); }
+    .nav-tab.active { color: white; background: rgba(139, 92, 246, 0.15); border: 1px solid rgba(139, 92, 246, 0.25); }
+    .status-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+    .status-dot.online { background: #34d399; box-shadow: 0 0 8px rgba(52, 211, 153, 0.5); }
+    .status-dot.offline { background: #6b7280; }
+    .status-dot.warning { background: #fbbf24; box-shadow: 0 0 8px rgba(251, 191, 36, 0.5); }
+    .slide-in { animation: slideIn 0.3s ease-out; }
+    @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+    .fade-in { animation: fadeIn 0.4s ease-out; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+    .pulse-dot { animation: pulse 2s infinite; }
+    @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
+    .pipeline-arrow { display: flex; align-items: center; color: rgba(255,255,255,0.2); font-size: 1.2rem; margin: 0 4px; }
+    .scrollbar-thin::-webkit-scrollbar { width: 6px; }
+    .scrollbar-thin::-webkit-scrollbar-track { background: transparent; }
+    .scrollbar-thin::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 3px; }
+    .bar-chart { display: flex; gap: 4px; align-items: flex-end; height: 80px; }
+    .bar-chart .bar { width: 12px; border-radius: 4px 4px 0 0; transition: height 0.5s ease; min-height: 4px; }
+  </style>
+</head>
+<body class="text-white min-h-screen" x-data="missionControl()" x-init="init()">
+  
+  <!-- Top Navigation -->
+  <header class="glass sticky top-0 z-50 border-b border-white/5">
+    <div class="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <span class="text-2xl">🛸</span>
+        <span class="text-lg font-semibold tracking-tight">Hermes <span class="text-violet-400">Mission Control</span></span>
+        <span class="text-xs text-white/30 ml-2 mono">v0.1</span>
+      </div>
+      <div class="flex items-center gap-6">
+        <div class="flex items-center gap-2 text-xs">
+          <span class="status-dot online pulse-dot" :class="connected ? 'online' : 'offline'"></span>
+          <span class="text-white/50" x-text="connected ? 'Live' : 'Disconnected'"></span>
+        </div>
+        <span class="text-xs text-white/30 mono" x-text="lastUpdate"></span>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Layout -->
+  <div class="max-w-7xl mx-auto px-6 py-8">
+    
+    <!-- Tabs -->
+    <nav class="flex gap-1 mb-8 flex-wrap" x-show="!drawerOpen">
+      <template x-for="tab in tabs" :key="tab.id">
+        <button class="nav-tab" :class="{ 'active': activeTab === tab.id }" @click="activeTab = tab.id" x-text="tab.label"></button>
+      </template>
+    </nav>
+
+    <!-- ============================== FLEET TAB ============================== -->
+    <div x-show="activeTab === 'fleet'" class="fade-in" x-cloak>
+      <!-- Summary Stats -->
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+        <div class="glass-card p-5">
+          <div class="text-white/40 text-xs font-medium uppercase tracking-wider mb-1">Profiles</div>
+          <div class="text-3xl font-bold" x-text="fleet.profiles?.length || '—'"></div>
+          <div class="text-white/30 text-xs mt-1">agents deployed</div>
+        </div>
+        <div class="glass-card p-5">
+          <div class="text-white/40 text-xs font-medium uppercase tracking-wider mb-1">Sessions</div>
+          <div class="text-3xl font-bold" x-text="totalSessions"></div>
+          <div class="text-white/30 text-xs mt-1">across all profiles</div>
+        </div>
+        <div class="glass-card p-5">
+          <div class="text-white/40 text-xs font-medium uppercase tracking-wider mb-1">Tokens</div>
+          <div class="text-3xl font-bold mono text-sm" x-text="formatNum(totalTokens)"></div>
+          <div class="text-white/30 text-xs mt-1">total usage</div>
+        </div>
+        <div class="glass-card p-5">
+          <div class="text-white/40 text-xs font-medium uppercase tracking-wider mb-1">Est. Cost</div>
+          <div class="text-3xl font-bold" x-text="'$' + totalCost.toFixed(2)"></div>
+          <div class="text-white/30 text-xs mt-1">all time</div>
+        </div>
+      </div>
+
+      <!-- Profile Cards Grid -->
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5" x-show="fleet.profiles">
+        <template x-for="(prof, i) in fleet.profiles" :key="prof.name">
+          <div class="glass-card p-5 cursor-pointer group relative overflow-hidden" @click="openProfile(prof.name)">
+            <!-- Color accent bar -->
+            <div class="absolute top-0 left-0 right-0 h-1 rounded-t-[16px]" 
+                 :style="'background: linear-gradient(90deg, ' + colorMap[prof.color || 'slate'] + ', transparent)'"></div>
+            <div class="flex items-start justify-between mb-4">
+              <div>
+                <span class="text-2xl mr-2" x-text="prof.icon"></span>
+                <span class="font-semibold capitalize" x-text="prof.name.replace(/-/g, ' ')"></span>
+              </div>
+              <span class="text-xs text-white/30 mono" x-text="prof.last_active"></span>
+            </div>
+            <p class="text-white/50 text-xs leading-relaxed mb-4 line-clamp-2" x-text="prof.purpose"></p>
+            <div class="flex gap-4 text-xs">
+              <div><span class="text-white/40">Sessions</span> <span class="font-medium" x-text="prof.sessions"></span></div>
+              <div><span class="text-white/40">Msgs</span> <span class="font-medium" x-text="prof.messages"></span></div>
+              <div><span class="text-white/40">Cron</span> <span class="font-medium" x-text="prof.cron_count || 0"></span></div>
+            </div>
+            <div class="mt-3 flex items-center gap-2 text-xs text-white/30">
+              <span x-text="prof.model"></span>
+            </div>
+          </div>
+        </template>
+      </div>
+    </div>
+
+    <!-- ============================== PIPELINE TAB ============================== -->
+    <div x-show="activeTab === 'pipeline'" class="fade-in" x-cloak>
+      <div class="glass-card p-6 mb-8">
+        <h2 class="text-lg font-semibold mb-2">📋 Core Workflow Pipeline</h2>
+        <p class="text-white/40 text-sm">Paper → Dissection → Infographic + Blog + Video + Social</p>
+      </div>
+
+      <!-- Pipeline Flow -->
+      <div class="glass-card p-8 mb-8 overflow-x-auto">
+        <div class="flex items-center justify-start gap-1 min-w-max">
+          <template x-for="(stage, i) in pipelineStages" :key="stage.id">
+            <template x-if="stage">
+              <div class="flex items-center">
+                <div class="flex flex-col items-center w-36">
+                  <div class="w-16 h-16 rounded-2xl flex items-center justify-center text-2xl mb-2"
+                       :style="'background: ' + stageBg(stage.icon) + '; border: 1px solid ' + stageBorder(stage.icon)">
+                    <span x-text="stage.icon"></span>
+                  </div>
+                  <div class="text-xs font-medium text-center" x-text="stage.name"></div>
+                  <div class="text-[10px] text-white/30 mt-1" x-text="stage.output"></div>
+                  <div class="flex items-center gap-1 mt-2">
+                    <span class="status-dot" :class="stage.last_active !== 'never' ? 'online' : 'offline'"></span>
+                    <span class="text-[10px] text-white/40" x-text="stage.last_active"></span>
+                  </div>
+                </div>
+                <div class="pipeline-arrow" x-show="i < pipelineStages.length - 1">
+                  <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M13 7l5 5m0 0l-5 5m5-5H6"/>
+                  </svg>
+                </div>
+              </div>
+            </template>
+          </template>
+        </div>
+        <!-- Branch lines from dissector -->
+        <div class="flex justify-center gap-16 mt-8 pt-6 border-t border-white/5">
+          <template x-for="stage in pipelineBranch" :key="stage.id">
+            <div class="flex flex-col items-center w-28">
+              <div class="w-12 h-12 rounded-xl flex items-center justify-center text-xl mb-1"
+                   :style="'background: ' + stageBg(stage.icon) + '; border: 1px solid ' + stageBorder(stage.icon)"></div>
+              <span class="text-[11px] text-white/70 font-medium" x-text="stage.name"></span>
+              <span class="text-[10px] text-white/30" x-text="stage.sessions + ' sessions'"></span>
+            </div>
+          </template>
+        </div>
+      </div>
+
+      <!-- Pipeline Doc -->
+      <div class="glass-card p-6">
+        <h3 class="text-sm font-medium text-white/50 uppercase tracking-wider mb-3">Pipeline Definition</h3>
+        <pre class="text-xs text-white/40 leading-relaxed whitespace-pre-wrap mono" x-text="pipelineDoc"></pre>
+      </div>
+    </div>
+
+    <!-- ============================== CRON TAB ============================== -->
+    <div x-show="activeTab === 'cron'" class="fade-in" x-cloak>
+      <div class="glass-card overflow-hidden">
+        <div class="p-5 border-b border-white/5 flex items-center justify-between">
+          <h2 class="font-semibold">⏰ Scheduled Jobs</h2>
+          <span class="text-xs text-white/30" x-text="cronJobs.length + ' jobs'"></span>
+        </div>
+        <div class="overflow-x-auto scrollbar-thin">
+          <table class="w-full text-sm">
+            <thead>
+              <tr class="text-white/30 text-xs uppercase tracking-wider border-b border-white/5">
+                <th class="text-left p-4 font-medium">Profile</th>
+                <th class="text-left p-4 font-medium">Name</th>
+                <th class="text-left p-4 font-medium">Schedule</th>
+                <th class="text-left p-4 font-medium hidden md:table-cell">Prompt</th>
+                <th class="text-left p-4 font-medium">Last Run</th>
+                <th class="text-left p-4 font-medium">Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              <template x-for="job in cronJobs" :key="job.id">
+                <tr class="border-b border-white/5 hover:bg-white/[0.02] transition-colors">
+                  <td class="p-4">
+                    <span class="px-2 py-0.5 rounded text-[11px] font-medium capitalize" 
+                          :class="job.profile === 'default' ? 'bg-violet-500/10 text-violet-300' : 'bg-emerald-500/10 text-emerald-300'"
+                          x-text="job.profile"></span>
+                  </td>
+                  <td class="p-4 font-medium" x-text="job.name"></td>
+                  <td class="p-4 text-white/60 mono text-xs" x-text="job.schedule"></td>
+                  <td class="p-4 text-white/40 text-xs hidden md:table-cell max-w-xs truncate" x-text="job.prompt"></td>
+                  <td class="p-4 text-white/40 text-xs" x-text="job.last_run"></td>
+                  <td class="p-4">
+                    <span class="flex items-center gap-1.5">
+                      <span class="status-dot" :class="job.enabled ? 'online' : 'offline'"></span>
+                      <span class="text-xs" :class="job.enabled ? 'text-emerald-400' : 'text-white/30'" x-text="job.enabled ? 'active' : 'paused'"></span>
+                    </span>
+                  </td>
+                </tr>
+              </template>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============================== GATEWAY TAB ============================== -->
+    <div x-show="activeTab === 'gateway'" class="fade-in" x-cloak>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+        <div class="glass-card p-5">
+          <h2 class="font-semibold mb-4">🔌 Platform Connections</h2>
+          <div class="space-y-3" x-show="gatewayData.gateway?.platforms">
+            <template x-for="(platform, name) in gatewayData.gateway.platforms" :key="name">
+              <div class="flex items-center justify-between p-3 rounded-xl bg-white/[0.02]">
+                <div class="flex items-center gap-3">
+                  <span class="status-dot" :class="platform.state === 'connected' ? 'online' : platform.state === 'paused' ? 'warning' : 'offline'"></span>
+                  <div>
+                    <div class="text-sm font-medium capitalize" x-text="name.replace(/_/g, ' ')"></div>
+                    <div class="text-xs text-white/30" x-text="platform.state"></div>
+                  </div>
+                </div>
+                <div class="text-xs text-white/30" x-text="platform.state === 'connected' ? '☑' : platform.error_message || ''"></div>
+              </div>
+            </template>
+          </div>
+          <div x-show="!gatewayData.gateway?.platforms" class="text-white/30 text-sm py-4 text-center">No platform data</div>
+        </div>
+
+        <div class="glass-card p-5">
+          <h2 class="font-semibold mb-4">📱 Connected Channels</h2>
+          <div class="space-y-2" x-show="gatewayData.channels?.platforms">
+            <template x-for="(channels, platform) in gatewayData.channels.platforms" :key="platform">
+              <div x-show="channels.length > 0">
+                <div class="text-xs text-white/40 uppercase tracking-wider mb-1" x-text="platform"></div>
+                <template x-for="ch in channels" :key="ch.id">
+                  <div class="flex items-center gap-2 p-2 rounded-lg bg-white/[0.02] mb-1">
+                    <span class="status-dot online"></span>
+                    <span class="text-sm" x-text="ch.name"></span>
+                    <span class="text-xs text-white/30" x-text="ch.type"></span>
+                  </div>
+                </template>
+              </div>
+            </template>
+          </div>
+          <div x-show="!gatewayData.channels?.platforms" class="text-white/30 text-sm py-4 text-center">No channel data</div>
+        </div>
+      </div>
+
+      <!-- Gateway Raw State -->
+      <div class="glass-card p-5">
+        <div class="flex items-center justify-between mb-3">
+          <h2 class="font-semibold">📡 Gateway State</h2>
+          <span class="px-2 py-0.5 rounded text-xs font-medium"
+                :class="gatewayData.gateway?.gateway_state === 'running' ? 'bg-emerald-500/10 text-emerald-300' : 'bg-amber-500/10 text-amber-300'"
+                x-text="gatewayData.gateway?.gateway_state || 'unknown'"></span>
+        </div>
+        <pre class="text-xs text-white/30 leading-relaxed mono whitespace-pre-wrap" x-text="JSON.stringify(gatewayData.gateway, null, 2)"></pre>
+      </div>
+    </div>
+
+    <!-- ============================== SYSTEM TAB ============================== -->
+    <div x-show="activeTab === 'system'" class="fade-in" x-cloak>
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 mb-8">
+        <div class="glass-card p-5">
+          <h3 class="text-white/40 text-xs font-medium uppercase tracking-wider mb-3">💾 Disk Usage</h3>
+          <div class="text-3xl font-bold mb-1" x-text="systemData.disk?.used_pct + '%'"></div>
+          <div class="w-full h-2 rounded-full bg-white/5 mb-2 overflow-hidden">
+            <div class="h-full rounded-full transition-all duration-500" 
+                 :style="'width: ' + (systemData.disk?.used_pct || 0) + '%'"
+                 :class="(systemData.disk?.used_pct || 0) > 80 ? 'bg-rose-500' : (systemData.disk?.used_pct || 0) > 60 ? 'bg-amber-500' : 'bg-emerald-500'"></div>
+          </div>
+          <div class="text-xs text-white/40">
+            <span x-text="systemData.disk?.used_gb + ' GB'"></span> / <span x-text="systemData.disk?.total_gb + ' GB'"></span>
+            <span class="ml-2" x-text="systemData.disk?.free_gb + ' GB free'"></span>
+          </div>
+        </div>
+        <div class="glass-card p-5">
+          <h3 class="text-white/40 text-xs font-medium uppercase tracking-wider mb-3">🗄️ Data Store</h3>
+          <div class="text-3xl font-bold mb-1" x-text="formatNum(systemData.total_sessions || 0)"></div>
+          <div class="text-xs text-white/40">sessions across all profiles</div>
+          <div class="mt-3 space-y-1 text-xs text-white/30">
+            <div>Home size: <span class="text-white/60" x-text="systemData.home_size_mb + ' MB'"></span></div>
+            <div>state.db: <span class="text-white/60" x-text="systemData.state_db_mb + ' MB'"></span></div>
+            <div>Est. cost: <span class="text-white/60" x-text="'$' + (systemData.total_cost || 0).toFixed(4)"></span></div>
+          </div>
+        </div>
+        <div class="glass-card p-5">
+          <h3 class="text-white/40 text-xs font-medium uppercase tracking-wider mb-3">📦 Hermes</h3>
+          <div class="text-3xl font-bold mb-1 mono text-sm" x-text="systemData.hermes_version || '?'"></div>
+          <div class="text-xs text-white/40">version</div>
+          <div class="mt-3 space-y-1 text-xs text-white/30">
+            <div>Profiles: <span class="text-white/60" x-text="systemData.profiles_count"></span></div>
+            <div>Home: <span class="text-white/60 mono text-[10px]" x-text="systemData.hermes_home"></span></div>
+          </div>
+        </div>
+      </div>
+      <div class="glass-card p-5">
+        <h3 class="text-white/40 text-xs font-medium uppercase tracking-wider mb-3">Recent Activity</h3>
+        <div class="space-y-2" x-show="activityFeed.length > 0">
+          <template x-for="ev in activityFeed.slice(0, 15)" :key="ev.title + ev.when">
+            <div class="flex items-center justify-between p-2 rounded-lg hover:bg-white/[0.02] text-sm">
+              <div class="flex items-center gap-3 min-w-0">
+                <span class="text-xs px-1.5 py-0.5 rounded capitalize font-medium"
+                      :class="ev.profile === 'default' ? 'bg-violet-500/10 text-violet-300' : 'bg-emerald-500/10 text-emerald-300'"
+                      x-text="ev.profile"></span>
+                <span class="truncate" x-text="ev.title"></span>
+              </div>
+              <div class="flex items-center gap-3 text-xs text-white/30 shrink-0">
+                <span x-text="ev.source"></span>
+                <span x-text="ev.messages + ' msgs'"></span>
+                <span x-text="ev.when"></span>
+              </div>
+            </div>
+          </template>
+        </div>
+        <div x-show="activityFeed.length === 0" class="text-white/30 text-sm py-4 text-center">No recent activity</div>
+      </div>
+    </div>
+
+    <!-- ============================== LOADING ============================== -->
+    <div x-show="loading" class="flex items-center justify-center py-24">
+      <div class="flex flex-col items-center gap-4">
+        <div class="w-10 h-10 border-2 border-violet-500/30 border-t-violet-400 rounded-full animate-spin"></div>
+        <span class="text-white/30 text-sm">Connecting to Hermes...</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================== DRAWER ============================== -->
+  <template x-if="drawerOpen && drawerProfile">
+    <div class="fixed inset-0 z-50 flex justify-end">
+      <div class="absolute inset-0 bg-black/60 backdrop-blur-sm" @click="drawerOpen = false"></div>
+      <div class="relative w-full max-w-xl bg-[#0d0d16] border-l border-white/10 overflow-y-auto slide-in scrollbar-thin">
+        <div class="sticky top-0 bg-[#0d0d16]/90 backdrop-blur-md border-b border-white/5 p-5 flex items-center justify-between">
+          <div class="flex items-center gap-3">
+            <span class="text-2xl" x-text="drawerProfile.icon || '⚙️'"></span>
+            <div>
+              <h2 class="font-semibold capitalize" x-text="drawerProfile.name?.replace(/-/g, ' ')"></h2>
+              <span class="text-xs text-white/30" x-text="drawerProfile.model || '?'"></span>
+            </div>
+          </div>
+          <button @click="drawerOpen = false" class="p-2 rounded-xl hover:bg-white/5 transition-colors text-white/40 hover:text-white">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+          </button>
+        </div>
+        <div class="p-5 space-y-6">
+          <!-- Stats Grid -->
+          <div class="grid grid-cols-3 gap-3">
+            <div class="glass rounded-xl p-3 text-center">
+              <div class="text-2xl font-bold" x-text="drawerDetail?.stats?.total_sessions || 0"></div>
+              <div class="text-[10px] text-white/30">Sessions</div>
+            </div>
+            <div class="glass rounded-xl p-3 text-center">
+              <div class="text-2xl font-bold" x-text="drawerDetail?.stats?.total_messages || 0"></div>
+              <div class="text-[10px] text-white/30">Messages</div>
+            </div>
+            <div class="glass rounded-xl p-3 text-center">
+              <div class="text-2xl font-bold mono text-sm" x-text="formatNum(drawerDetail?.stats?.total_tokens || 0)"></div>
+              <div class="text-[10px] text-white/30">Tokens</div>
+            </div>
+          </div>
+
+          <!-- SOUL.md -->
+          <div>
+            <h3 class="text-xs text-white/40 uppercase tracking-wider mb-2">Identity (SOUL.md)</h3>
+            <div class="glass rounded-xl p-4">
+              <p class="text-xs text-white/60 leading-relaxed" x-text="drawerDetail?.soul?.slice(0, 500) || '—'"></p>
+            </div>
+          </div>
+
+          <!-- Skills -->
+          <div x-show="drawerDetail?.skills?.length > 0">
+            <h3 class="text-xs text-white/40 uppercase tracking-wider mb-2">Skills</h3>
+            <div class="flex flex-wrap gap-2">
+              <template x-for="sk in drawerDetail?.skills" :key="sk">
+                <span class="px-2.5 py-1 rounded-full text-xs bg-violet-500/10 text-violet-300 border border-violet-500/20" x-text="sk"></span>
+              </template>
+            </div>
+          </div>
+
+          <!-- Cron Jobs -->
+          <div x-show="drawerDetail?.cron_jobs?.length > 0">
+            <h3 class="text-xs text-white/40 uppercase tracking-wider mb-2">Scheduled Jobs</h3>
+            <div class="space-y-2">
+              <template x-for="job in drawerDetail.cron_jobs" :key="job.id">
+                <div class="flex items-center justify-between glass rounded-xl p-3">
+                  <div>
+                    <div class="text-sm font-medium" x-text="job.name"></div>
+                    <div class="text-xs text-white/30 mono" x-text="job.schedule"></div>
+                  </div>
+                  <span class="status-dot" :class="job.enabled ? 'online' : 'offline'"></span>
+                </div>
+              </template>
+            </div>
+          </div>
+
+          <!-- Recent Sessions -->
+          <div>
+            <h3 class="text-xs text-white/40 uppercase tracking-wider mb-2">Recent Sessions</h3>
+            <div class="space-y-2">
+              <template x-for="s in drawerDetail?.sessions?.slice(0, 10)" :key="s.id">
+                <div class="glass rounded-xl p-3">
+                  <div class="flex items-center justify-between mb-1">
+                    <span class="text-sm font-medium truncate" x-text="s.title || 'Untitled'"></span>
+                    <span class="text-[10px] px-1.5 py-0.5 rounded capitalize" 
+                          :class="s.end_reason === 'active' ? 'bg-emerald-500/10 text-emerald-300' : 'bg-white/5 text-white/30'"
+                          x-text="s.end_reason"></span>
+                  </div>
+                  <div class="flex gap-3 text-[11px] text-white/30">
+                    <span x-text="s.source"></span>
+                    <span x-text="s.message_count + ' msgs'"></span>
+                    <span x-text="s.model?.slice(0, 25)"></span>
+                    <span x-text="'$' + (s.cost || 0).toFixed(4)"></span>
+                  </div>
+                </div>
+              </template>
+              <div x-show="!drawerDetail?.sessions?.length" class="text-white/30 text-sm py-4 text-center">No sessions yet</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </template>
+
+  <!-- x-cloak -->
+  <style>[x-cloak] { display: none !important; }</style>
+
+  <script>
+    function missionControl() {
+      return {
+        // State
+        activeTab: 'fleet',
+        loading: true,
+        connected: false,
+        lastUpdate: '',
+        drawerOpen: false,
+        drawerProfile: null,
+        drawerDetail: null,
+        tabs: [
+          { id: 'fleet', label: '🚀 Fleet' },
+          { id: 'pipeline', label: '🔗 Pipeline' },
+          { id: 'cron', label: '⏰ Cron' },
+          { id: 'gateway', label: '📡 Gateway' },
+          { id: 'system', label: '⚙️ System' },
+        ],
+        fleet: { profiles: [] },
+        gatewayData: { gateway: {}, channels: {} },
+        cronJobs: [],
+        pipelineStages: [],
+        pipelineBranch: [],
+        pipelineDoc: '',
+        systemData: {},
+        activityFeed: [],
+        colorMap: {
+          emerald: '#34d399, #059669',
+          violet: '#a78bfa, #7c3aed',
+          amber: '#fbbf24, #d97706',
+          sky: '#38bdf8, #0284c7',
+          rose: '#fb7185, #e11d48',
+          blue: '#60a5fa, #2563eb',
+          cyan: '#22d3ee, #0891b2',
+          purple: '#c084fc, #9333ea',
+          slate: '#94a3b8, #475569',
+        },
+        stageColors: {
+          '🩺': 'rgba(16,185,129,0.15)',
+          '🔬': 'rgba(139,92,246,0.15)',
+          '📊': 'rgba(251,191,36,0.15)',
+          '✍️': 'rgba(56,189,248,0.15)',
+          '🎬': 'rgba(244,63,94,0.15)',
+          '🐦': 'rgba(96,165,250,0.15)',
+        },
+        stageBorders: {
+          '🩺': 'rgba(16,185,129,0.3)',
+          '🔬': 'rgba(139,92,246,0.3)',
+          '📊': 'rgba(251,191,36,0.3)',
+          '✍️': 'rgba(56,189,248,0.3)',
+          '🎬': 'rgba(244,63,94,0.3)',
+          '🐦': 'rgba(96,165,250,0.3)',
+        },
+
+        // Computed
+        get totalSessions() {
+          return this.fleet.profiles?.reduce((sum, p) => sum + (p.sessions || 0), 0) || 0;
+        },
+        get totalTokens() {
+          return this.fleet.profiles?.reduce((sum, p) => sum + (p.tokens || 0), 0) || 0;
+        },
+        get totalCost() {
+          return this.fleet.profiles?.reduce((sum, p) => sum + (p.cost || 0), 0) || 0;
+        },
+
+        // Helpers
+        formatNum(n) {
+          if (!n) return '0';
+          if (n >= 1e9) return (n / 1e9).toFixed(1) + 'B';
+          if (n >= 1e6) return (n / 1e6).toFixed(1) + 'M';
+          if (n >= 1e3) return (n / 1e3).toFixed(1) + 'K';
+          return String(n);
+        },
+        stageBg(icon) { return this.stageColors[icon] || 'rgba(255,255,255,0.03)'; },
+        stageBorder(icon) { return this.stageBorders[icon] || 'rgba(255,255,255,0.06)'; },
+
+        // API
+        async fetchAPI(url) {
+          try {
+            const res = await fetch(url);
+            return await res.json();
+          } catch { return null; }
+        },
+
+        async fetchAll() {
+          const [fleet, gateway, cron, pipeline, system, activity] = await Promise.all([
+            this.fetchAPI('/api/fleet'),
+            this.fetchAPI('/api/gateway'),
+            this.fetchAPI('/api/cron'),
+            this.fetchAPI('/api/pipeline'),
+            this.fetchAPI('/api/system'),
+            this.fetchAPI('/api/activity'),
+          ]);
+          if (fleet) this.fleet = fleet;
+          if (gateway) this.gatewayData = gateway;
+          if (cron) this.cronJobs = cron.jobs || [];
+          if (pipeline) { 
+            this.pipelineStages = pipeline.stages || [];
+            this.pipelineDoc = pipeline.document || '';
+            // Split stages into main flow and branches
+            this.pipelineBranch = this.pipelineStages.slice(2);
+            this.pipelineStages = this.pipelineStages.slice(0, 2);
+          }
+          if (system) this.systemData = system;
+          if (activity) this.activityFeed = activity.events || [];
+          this.connected = true;
+          this.loading = false;
+          this.lastUpdate = new Date().toLocaleTimeString();
+        },
+
+        async openProfile(name) {
+          this.drawerProfile = this.fleet.profiles?.find(p => p.name === name) || { name };
+          this.drawerDetail = null;
+          this.drawerOpen = true;
+          const detail = await this.fetchAPI('/api/profile/' + name);
+          if (detail) this.drawerDetail = detail;
+        },
+
+        // SSE
+        initSSE() {
+          const evtSource = new EventSource('/events');
+          evtSource.addEventListener('update', (e) => {
+            try {
+              const data = JSON.parse(e.data);
+              if (data.fleet) this.fleet = data.fleet;
+              if (data.gateway) this.gatewayData = data.gateway;
+              if (data.system) this.systemData = data.system;
+              this.connected = true;
+              this.loading = false;
+              this.lastUpdate = new Date().toLocaleTimeString();
+            } catch {}
+          });
+          evtSource.onerror = () => {
+            this.connected = false;
+          };
+        },
+
+        init() {
+          this.fetchAll().then(() => {
+            this.initSSE();
+          });
+        }
+      };
+    }
+  </script>
+</body>
+</html>

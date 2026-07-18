@@ -1,0 +1,20 @@
+services:
+  mission-control:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: hermes-mission-control
+    restart: unless-stopped
+    ports:
+      - "2800:2800"
+    volumes:
+      # Mount your Hermes data directory read-only
+      - ~/.hermes:/data/hermes:ro
+    environment:
+      - HERMES_HOME=/data/hermes
+    healthcheck:
+      test: ["CMD", "python3", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:2800/api/fleet')"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
