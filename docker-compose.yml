@@ -9,7 +9,7 @@ services:
       - "2800:2800"
     volumes:
       # Mount your Hermes data directory read-only
-      - ~/.hermes:/data/hermes:ro
+      - ~/home/hermes/.hermes:/data/hermes:ro
     environment:
       - HERMES_HOME=/data/hermes
     healthcheck:
