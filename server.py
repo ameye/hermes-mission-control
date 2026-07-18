@@ -150,10 +150,23 @@ async def api_diagnose():
 @app.get("/health")
 async def health():
     """Fast health check — no DB queries, just confirms server is alive."""
+    import os as _os
+    uid = _os.getuid()
+    gid = _os.getgid()
+    home_contents = []
+    if HERMES_HOME.exists():
+        try:
+            home_contents = [str(p.name) for p in HERMES_HOME.iterdir()][:10]
+        except PermissionError:
+            home_contents = ["⚠️ Permission denied — cannot list directory"]
     return {
         "status": "ok",
         "hermes_home": str(HERMES_HOME),
         "profiles_dir_exists": PROFILES_DIR.exists(),
+        "container_uid": uid,
+        "container_gid": gid,
+        "data_dir_permissions": oct(_os.stat(str(HERMES_HOME)).st_mode) if HERMES_HOME.exists() else "N/A",
+        "data_dir_contents": home_contents,
     }
 
 
