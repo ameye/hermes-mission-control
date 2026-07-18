@@ -8,7 +8,7 @@ services:
     ports:
       - "2800:2800"
     volumes:
-      - hermes-live-data:/data/hermes:ro
+      - oi7qh9aiw5s4sfs4h0fozwrv_hermes-home:/data/hermes:ro
     environment:
       - HERMES_HOME=/data/hermes
     healthcheck:
@@ -17,7 +17,3 @@ services:
       timeout: 3s
       retries: 3
       start_period: 3s
-
-volumes:
-  hermes-live-data:
-    external: true
