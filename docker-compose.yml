@@ -8,8 +8,7 @@ services:
     ports:
       - "2800:2800"
     volumes:
-      # Mount your Hermes data directory read-only
-      - ~/home/hermes/.hermes:/data/hermes:ro
+      - hermes-data:/data/hermes:ro
     environment:
       - HERMES_HOME=/data/hermes
     healthcheck:
@@ -18,3 +17,10 @@ services:
       timeout: 3s
       retries: 3
       start_period: 3s
+
+volumes:
+  hermes-data:
+    driver_opts:
+      type: none
+      device: /home/hermeswebui/.hermes
+      o: bind
