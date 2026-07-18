@@ -7,461 +7,525 @@
   <script src="https://cdn.tailwindcss.com"></script>
   <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
   <style>
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap');
     * { font-family: 'Inter', system-ui, sans-serif; }
-    .mono { font-family: 'JetBrains Mono', monospace; }
-    body { background: #0a0a0f; background-image: radial-gradient(ellipse at 20% 50%, rgba(88, 28, 135, 0.12) 0%, transparent 50%), radial-gradient(ellipse at 80% 20%, rgba(14, 116, 144, 0.08) 0%, transparent 50%), radial-gradient(ellipse at 50% 80%, rgba(6, 78, 59, 0.06) 0%, transparent 50%); }
-    .glass { background: rgba(255,255,255,0.04); backdrop-filter: blur(20px); border: 1px solid rgba(255,255,255,0.06); }
-    .glass-hover:hover { background: rgba(255,255,255,0.08); border-color: rgba(255,255,255,0.12); }
-    .glass-card { background: rgba(255,255,255,0.03); backdrop-filter: blur(12px); border: 1px solid rgba(255,255,255,0.06); border-radius: 16px; transition: all 0.3s ease; }
-    .glass-card:hover { background: rgba(255,255,255,0.06); border-color: rgba(255,255,255,0.12); transform: translateY(-2px); box-shadow: 0 8px 32px rgba(0,0,0,0.3); }
-    .glow { box-shadow: 0 0 24px rgba(88, 28, 135, 0.15), 0 0 80px rgba(88, 28, 135, 0.05); }
-    .glow-green { box-shadow: 0 0 20px rgba(52, 211, 153, 0.1); }
-    .glow-amber { box-shadow: 0 0 20px rgba(251, 191, 36, 0.1); }
-    .nav-tab { padding: 8px 20px; border-radius: 10px; cursor: pointer; transition: all 0.2s; font-weight: 500; font-size: 0.9rem; color: rgba(255,255,255,0.5); }
-    .nav-tab:hover { color: rgba(255,255,255,0.8); background: rgba(255,255,255,0.04); }
-    .nav-tab.active { color: white; background: rgba(139, 92, 246, 0.15); border: 1px solid rgba(139, 92, 246, 0.25); }
-    .status-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
-    .status-dot.online { background: #34d399; box-shadow: 0 0 8px rgba(52, 211, 153, 0.5); }
-    .status-dot.offline { background: #6b7280; }
-    .status-dot.warning { background: #fbbf24; box-shadow: 0 0 8px rgba(251, 191, 36, 0.5); }
-    .slide-in { animation: slideIn 0.3s ease-out; }
-    @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
-    .fade-in { animation: fadeIn 0.4s ease-out; }
-    @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-    .pulse-dot { animation: pulse 2s infinite; }
+    .mono { font-family: 'JetBrains Mono', monospace !important; }
+    
+    /* ── Dark Base ── */
+    body { background: #07070d; margin: 0; overflow-x: hidden; }
+    #particle-canvas { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; z-index: 0; pointer-events: none; }
+    
+    /* ── Glassmorphism ── */
+    .glass { background: rgba(255,255,255,0.035); backdrop-filter: blur(24px) saturate(1.4); -webkit-backdrop-filter: blur(24px) saturate(1.4); border: 1px solid rgba(255,255,255,0.06); }
+    .glass-hover:hover { background: rgba(255,255,255,0.07); border-color: rgba(255,255,255,0.14); }
+    .glass-card { background: rgba(255,255,255,0.03); backdrop-filter: blur(16px) saturate(1.3); -webkit-backdrop-filter: blur(16px) saturate(1.3); border: 1px solid rgba(255,255,255,0.06); border-radius: 16px; transition: all 0.35s cubic-bezier(0.25, 0.46, 0.45, 0.94); position: relative; overflow: hidden; }
+    .glass-card::before { content: ''; position: absolute; top: -50%; left: -50%; width: 200%; height: 200%; background: radial-gradient(circle at 30% 20%, rgba(255,255,255,0.03) 0%, transparent 50%); pointer-events: none; }
+    .glass-card:hover { background: rgba(255,255,255,0.055); border-color: rgba(255,255,255,0.12); transform: translateY(-3px); }
+    .glass-card.shimmer::after { content: ''; position: absolute; inset: 0; background: linear-gradient(90deg, transparent, rgba(255,255,255,0.03), transparent); background-size: 200% 100%; animation: shimmer 2s ease-in-out infinite; }
+    @keyframes shimmer { 0% { background-position: -200% 0; } 100% { background-position: 200% 0; } }
+    
+    /* ── Glow ── */
+    .glow-violet { box-shadow: 0 0 30px rgba(139,92,246,0.08), 0 0 80px rgba(139,92,246,0.03); }
+    .glow-cyan { box-shadow: 0 0 30px rgba(34,211,238,0.08), 0 0 80px rgba(34,211,238,0.03); }
+    .glow-emerald { box-shadow: 0 0 30px rgba(52,211,153,0.08), 0 0 80px rgba(52,211,153,0.03); }
+    
+    /* ── Nav Tabs ── */
+    .nav-tab { position: relative; padding: 10px 22px; border-radius: 10px; cursor: pointer; transition: all 0.25s ease; font-weight: 500; font-size: 0.85rem; color: rgba(255,255,255,0.4); background: transparent; border: 1px solid transparent; }
+    .nav-tab:hover { color: rgba(255,255,255,0.75); background: rgba(255,255,255,0.04); }
+    .nav-tab.active { color: white; background: rgba(139,92,246,0.12); border-color: rgba(139,92,246,0.25); box-shadow: 0 0 20px rgba(139,92,246,0.06); }
+    .nav-tab.active::after { content: ''; position: absolute; bottom: -1px; left: 20%; right: 20%; height: 2px; background: linear-gradient(90deg, transparent, rgba(139,92,246,0.6), transparent); background-size: 200% 100%; animation: shimmer 2s ease-in-out infinite; }
+    
+    /* ── Status Dots ── */
+    .status-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; position: relative; }
+    .status-dot.online { background: #34d399; box-shadow: 0 0 10px rgba(52,211,153,0.5); }
+    .status-dot.online::after { content: ''; position: absolute; inset: -3px; border-radius: 50%; border: 1.5px solid rgba(52,211,153,0.2); animation: ping 2s infinite; }
+    @keyframes ping { 0% { transform: scale(1); opacity: 1; } 100% { transform: scale(1.8); opacity: 0; } }
+    .status-dot.offline { background: #4b5563; }
+    .status-dot.warning { background: #fbbf24; box-shadow: 0 0 10px rgba(251,191,36,0.5); }
+    .status-dot.pulse { animation: pulse 2s infinite; }
     @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
-    .pipeline-arrow { display: flex; align-items: center; color: rgba(255,255,255,0.2); font-size: 1.2rem; margin: 0 4px; }
-    .scrollbar-thin::-webkit-scrollbar { width: 6px; }
+    
+    /* ── Dissolve Transitions ── */
+    .tab-content { transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1); }
+    .tab-content.entering { animation: dissolveIn 0.4s cubic-bezier(0.4, 0, 0.2, 1) forwards; }
+    .tab-content.leaving { animation: dissolveOut 0.3s cubic-bezier(0.4, 0, 0.2, 1) forwards; }
+    @keyframes dissolveIn { 0% { opacity: 0; transform: scale(0.97); filter: blur(6px); } 100% { opacity: 1; transform: scale(1); filter: blur(0); } }
+    @keyframes dissolveOut { 0% { opacity: 1; transform: scale(1); filter: blur(0); } 100% { opacity: 0; transform: scale(0.97); filter: blur(6px); } }
+    
+    /* ── Staggered Card Entry ── */
+    .stagger-item { opacity: 0; transform: translateY(16px); animation: staggerUp 0.45s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards; }
+    @keyframes staggerUp { 0% { opacity: 0; transform: translateY(16px); } 100% { opacity: 1; transform: translateY(0); } }
+    
+    /* ── Count Up ── */
+    .count-up { display: inline-block; transition: all 0.3s ease; }
+    
+    /* ── Scanline ── */
+    .scanline { position: relative; overflow: hidden; }
+    .scanline::before { content: ''; position: absolute; left: 0; right: 0; height: 60px; background: linear-gradient(180deg, transparent, rgba(139,92,246,0.04), transparent); animation: scanline 4s linear infinite; pointer-events: none; z-index: 1; }
+    @keyframes scanline { 0% { top: -60px; } 100% { top: 100%; } }
+    
+    /* ── 3D Tilt ── */
+    .tilt-card { perspective: 800px; }
+    .tilt-card-inner { transition: transform 0.15s cubic-bezier(0.25, 0.46, 0.45, 0.94); transform-style: preserve-3d; will-change: transform; }
+    
+    /* ── Sparklines ── */
+    .sparkline { display: inline-block; vertical-align: middle; }
+    .sparkline path { fill: none; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; animation: drawLine 1.5s ease-out forwards; }
+    @keyframes drawLine { from { stroke-dashoffset: 200; } to { stroke-dashoffset: 0; } }
+    
+    /* ── Pipeline ── */
+    .pipeline-node { width: 64px; height: 64px; border-radius: 18px; display: flex; align-items: center; justify-content: center; font-size: 1.5rem; position: relative; transition: all 0.3s ease; }
+    .pipeline-node::after { content: ''; position: absolute; inset: -2px; border-radius: 20px; background: linear-gradient(135deg, var(--node-color), transparent); opacity: 0.3; z-index: -1; filter: blur(6px); transition: opacity 0.3s ease; }
+    .pipeline-node:hover::after { opacity: 0.6; }
+    .pipeline-arrow { color: rgba(255,255,255,0.12); font-size: 1.2rem; flex-shrink: 0; }
+    
+    /* ── Skeleton Loading ── */
+    .skeleton { background: linear-gradient(90deg, rgba(255,255,255,0.03) 25%, rgba(255,255,255,0.06) 50%, rgba(255,255,255,0.03) 75%); background-size: 200% 100%; animation: shimmer 2s ease-in-out infinite; border-radius: 8px; }
+    
+    /* ── Gradient Accent Bar ── */
+    .accent-bar { position: absolute; top: 0; left: 0; right: 0; height: 2px; border-radius: 16px 16px 0 0; background: linear-gradient(90deg, var(--bar-color1), var(--bar-color2), var(--bar-color2), var(--bar-color1)); background-size: 200% 100%; animation: shimmer 3s ease-in-out infinite; }
+    
+    /* ── Floating Orb ── */
+    .orb { position: fixed; border-radius: 50%; filter: blur(60px); pointer-events: none; z-index: 0; animation: orbFloat 20s ease-in-out infinite; opacity: 0.3; }
+    @keyframes orbFloat { 0%, 100% { transform: translate(0, 0) scale(1); } 25% { transform: translate(100px, -50px) scale(1.1); } 50% { transform: translate(-50px, 80px) scale(0.9); } 75% { transform: translate(80px, 30px) scale(1.05); } }
+    
+    /* ── Drawer ── */
+    .drawer-panel { animation: slideIn 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94); }
+    @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+    
+    /* ── Scroll ── */
+    .scrollbar-thin::-webkit-scrollbar { width: 4px; }
     .scrollbar-thin::-webkit-scrollbar-track { background: transparent; }
-    .scrollbar-thin::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 3px; }
-    .bar-chart { display: flex; gap: 4px; align-items: flex-end; height: 80px; }
-    .bar-chart .bar { width: 12px; border-radius: 4px 4px 0 0; transition: height 0.5s ease; min-height: 4px; }
+    .scrollbar-thin::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.06); border-radius: 2px; }
+    .scrollbar-thin::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.12); }
+    
+    /* ── Misc ── */
+    [x-cloak] { display: none !important; }
+    .line-clamp-2 { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+    .glow-ring { box-shadow: 0 0 0 0 rgba(139,92,246,0); animation: glow-pulse 2s infinite; }
+    @keyframes glow-pulse { 0% { box-shadow: 0 0 0 0 rgba(139,92,246,0.3); } 70% { box-shadow: 0 0 0 8px rgba(139,92,246,0); } 100% { box-shadow: 0 0 0 0 rgba(139,92,246,0); } }
   </style>
 </head>
-<body class="text-white min-h-screen" x-data="missionControl()" x-init="init()">
-  
-  <!-- Top Navigation -->
-  <header class="glass sticky top-0 z-50 border-b border-white/5">
-    <div class="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
-      <div class="flex items-center gap-3">
-        <span class="text-2xl">🛸</span>
-        <span class="text-lg font-semibold tracking-tight">Hermes <span class="text-violet-400">Mission Control</span></span>
-        <span class="text-xs text-white/30 ml-2 mono">v0.1</span>
-      </div>
-      <div class="flex items-center gap-6">
-        <div class="flex items-center gap-2 text-xs">
-          <span class="status-dot online pulse-dot" :class="connected ? 'online' : 'offline'"></span>
-          <span class="text-white/50" x-text="connected ? 'Live' : 'Disconnected'"></span>
-        </div>
-        <span class="text-xs text-white/30 mono" x-text="lastUpdate"></span>
-      </div>
-    </div>
-  </header>
+<body>
 
-  <!-- Main Layout -->
-  <div class="max-w-7xl mx-auto px-6 py-8">
+  <!-- Background Orbs -->
+  <div class="orb" style="width:400px;height:400px;background:rgba(139,92,246,0.12);top:-10%;left:-5%;animation-delay:0s;"></div>
+  <div class="orb" style="width:300px;height:300px;background:rgba(34,211,238,0.08);bottom:10%;right:5%;animation-delay:-7s;"></div>
+  <div class="orb" style="width:350px;height:350px;background:rgba(52,211,153,0.06);top:40%;left:60%;animation-delay:-14s;"></div>
+
+  <!-- Particle Canvas -->
+  <canvas id="particle-canvas"></canvas>
+
+  <!-- Main App -->
+  <div class="relative z-10 text-white min-h-screen" x-data="missionControl()" x-init="init()">
     
-    <!-- Tabs -->
-    <nav class="flex gap-1 mb-8 flex-wrap" x-show="!drawerOpen">
-      <template x-for="tab in tabs" :key="tab.id">
-        <button class="nav-tab" :class="{ 'active': activeTab === tab.id }" @click="activeTab = tab.id" x-text="tab.label"></button>
-      </template>
-    </nav>
-
-    <!-- ============================== FLEET TAB ============================== -->
-    <div x-show="activeTab === 'fleet'" class="fade-in" x-cloak>
-      <!-- Summary Stats -->
-      <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-        <div class="glass-card p-5">
-          <div class="text-white/40 text-xs font-medium uppercase tracking-wider mb-1">Profiles</div>
-          <div class="text-3xl font-bold" x-text="fleet.profiles?.length || '—'"></div>
-          <div class="text-white/30 text-xs mt-1">agents deployed</div>
+    <!-- Top Navigation -->
+    <header class="glass sticky top-0 z-50 border-b border-white/5">
+      <div class="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
+        <div class="flex items-center gap-3">
+          <div class="w-8 h-8 rounded-lg bg-violet-500/15 border border-violet-500/25 flex items-center justify-center text-sm glow-violet">🛸</div>
+          <span class="text-lg font-semibold tracking-tight">Hermes <span class="text-violet-400">Mission Control</span></span>
+          <span class="text-[10px] text-white/20 mono px-2 py-0.5 rounded-full border border-white/5">v2.0</span>
         </div>
-        <div class="glass-card p-5">
-          <div class="text-white/40 text-xs font-medium uppercase tracking-wider mb-1">Sessions</div>
-          <div class="text-3xl font-bold" x-text="totalSessions"></div>
-          <div class="text-white/30 text-xs mt-1">across all profiles</div>
-        </div>
-        <div class="glass-card p-5">
-          <div class="text-white/40 text-xs font-medium uppercase tracking-wider mb-1">Tokens</div>
-          <div class="text-3xl font-bold mono text-sm" x-text="formatNum(totalTokens)"></div>
-          <div class="text-white/30 text-xs mt-1">total usage</div>
-        </div>
-        <div class="glass-card p-5">
-          <div class="text-white/40 text-xs font-medium uppercase tracking-wider mb-1">Est. Cost</div>
-          <div class="text-3xl font-bold" x-text="'$' + totalCost.toFixed(2)"></div>
-          <div class="text-white/30 text-xs mt-1">all time</div>
-        </div>
-      </div>
-
-      <!-- Profile Cards Grid -->
-      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5" x-show="fleet.profiles">
-        <template x-for="(prof, i) in fleet.profiles" :key="prof.name">
-          <div class="glass-card p-5 cursor-pointer group relative overflow-hidden" @click="openProfile(prof.name)">
-            <!-- Color accent bar -->
-            <div class="absolute top-0 left-0 right-0 h-1 rounded-t-[16px]" 
-                 :style="'background: linear-gradient(90deg, ' + colorMap[prof.color || 'slate'] + ', transparent)'"></div>
-            <div class="flex items-start justify-between mb-4">
-              <div>
-                <span class="text-2xl mr-2" x-text="prof.icon"></span>
-                <span class="font-semibold capitalize" x-text="prof.name.replace(/-/g, ' ')"></span>
-              </div>
-              <span class="text-xs text-white/30 mono" x-text="prof.last_active"></span>
-            </div>
-            <p class="text-white/50 text-xs leading-relaxed mb-4 line-clamp-2" x-text="prof.purpose"></p>
-            <div class="flex gap-4 text-xs">
-              <div><span class="text-white/40">Sessions</span> <span class="font-medium" x-text="prof.sessions"></span></div>
-              <div><span class="text-white/40">Msgs</span> <span class="font-medium" x-text="prof.messages"></span></div>
-              <div><span class="text-white/40">Cron</span> <span class="font-medium" x-text="prof.cron_count || 0"></span></div>
-            </div>
-            <div class="mt-3 flex items-center gap-2 text-xs text-white/30">
-              <span x-text="prof.model"></span>
-            </div>
+        <div class="flex items-center gap-5">
+          <div class="flex items-center gap-2 text-xs">
+            <span class="status-dot online pulse" :class="connected ? 'online' : 'offline'"></span>
+            <span class="text-white/40" x-text="connected ? 'Live' : 'Disconnected'"></span>
           </div>
+          <div class="flex items-center gap-2 text-xs text-white/20 bg-white/[0.02] px-3 py-1.5 rounded-full border border-white/5">
+            <span class="mono" x-text="lastUpdate"></span>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <div class="max-w-7xl mx-auto px-6 py-6" x-show="!drawerOpen">
+      
+      <!-- Tabs -->
+      <nav class="flex gap-1.5 mb-6 flex-wrap">
+        <template x-for="tab in tabs" :key="tab.id">
+          <button class="nav-tab" :class="{ 'active': activeTab === tab.id, 'glow-violet': activeTab === tab.id }" @click="switchTab(tab.id)" x-html="tab.label"></button>
         </template>
-      </div>
-    </div>
+      </nav>
 
-    <!-- ============================== PIPELINE TAB ============================== -->
-    <div x-show="activeTab === 'pipeline'" class="fade-in" x-cloak>
-      <div class="glass-card p-6 mb-8">
-        <h2 class="text-lg font-semibold mb-2">📋 Core Workflow Pipeline</h2>
-        <p class="text-white/40 text-sm">Paper → Dissection → Infographic + Blog + Video + Social</p>
-      </div>
-
-      <!-- Pipeline Flow -->
-      <div class="glass-card p-8 mb-8 overflow-x-auto">
-        <div class="flex items-center justify-start gap-1 min-w-max">
-          <template x-for="(stage, i) in pipelineStages" :key="stage.id">
-            <template x-if="stage">
-              <div class="flex items-center">
-                <div class="flex flex-col items-center w-36">
-                  <div class="w-16 h-16 rounded-2xl flex items-center justify-center text-2xl mb-2"
-                       :style="'background: ' + stageBg(stage.icon) + '; border: 1px solid ' + stageBorder(stage.icon)">
-                    <span x-text="stage.icon"></span>
-                  </div>
-                  <div class="text-xs font-medium text-center" x-text="stage.name"></div>
-                  <div class="text-[10px] text-white/30 mt-1" x-text="stage.output"></div>
-                  <div class="flex items-center gap-1 mt-2">
-                    <span class="status-dot" :class="stage.last_active !== 'never' ? 'online' : 'offline'"></span>
-                    <span class="text-[10px] text-white/40" x-text="stage.last_active"></span>
-                  </div>
-                </div>
-                <div class="pipeline-arrow" x-show="i < pipelineStages.length - 1">
-                  <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M13 7l5 5m0 0l-5 5m5-5H6"/>
+      <!-- Tab Content -->
+      <div class="relative">
+        <!-- ═══ FLEET ═══ -->
+        <div x-show="activeTab === 'fleet'" class="tab-content" :class="tabAnimClass">
+          <!-- Summary Stats -->
+          <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+            <template x-for="(stat, i) in fleetStats" :key="stat.label">
+              <div class="glass-card p-5 stagger-item" :style="'animation-delay: ' + (i * 60) + 'ms'" :class="stat.glow || ''">
+                <div class="text-white/35 text-[10px] font-medium uppercase tracking-widest mb-1.5" x-text="stat.label"></div>
+                <div class="text-2xl font-bold count-up" x-text="stat.value"></div>
+                <div class="text-white/25 text-xs mt-0.5" x-text="stat.sublabel"></div>
+                <!-- Sparkline -->
+                <div class="mt-2 h-8" x-show="stat.sparkline && stat.sparkline.length > 1">
+                  <svg class="sparkline w-full h-full" viewBox="0 0 100 30" preserveAspectRatio="none">
+                    <path :d="sparklinePath(stat.sparkline, 100, 30)" :stroke="stat.sparkColor || 'rgba(139,92,246,0.5)'" stroke-dasharray="200" style="filter: drop-shadow(0 0 4px var(--spark-glow, rgba(139,92,246,0.3)));" />
                   </svg>
                 </div>
               </div>
             </template>
-          </template>
-        </div>
-        <!-- Branch lines from dissector -->
-        <div class="flex justify-center gap-16 mt-8 pt-6 border-t border-white/5">
-          <template x-for="stage in pipelineBranch" :key="stage.id">
-            <div class="flex flex-col items-center w-28">
-              <div class="w-12 h-12 rounded-xl flex items-center justify-center text-xl mb-1"
-                   :style="'background: ' + stageBg(stage.icon) + '; border: 1px solid ' + stageBorder(stage.icon)"></div>
-              <span class="text-[11px] text-white/70 font-medium" x-text="stage.name"></span>
-              <span class="text-[10px] text-white/30" x-text="stage.sessions + ' sessions'"></span>
-            </div>
-          </template>
-        </div>
-      </div>
+          </div>
 
-      <!-- Pipeline Doc -->
-      <div class="glass-card p-6">
-        <h3 class="text-sm font-medium text-white/50 uppercase tracking-wider mb-3">Pipeline Definition</h3>
-        <pre class="text-xs text-white/40 leading-relaxed whitespace-pre-wrap mono" x-text="pipelineDoc"></pre>
-      </div>
-    </div>
-
-    <!-- ============================== CRON TAB ============================== -->
-    <div x-show="activeTab === 'cron'" class="fade-in" x-cloak>
-      <div class="glass-card overflow-hidden">
-        <div class="p-5 border-b border-white/5 flex items-center justify-between">
-          <h2 class="font-semibold">⏰ Scheduled Jobs</h2>
-          <span class="text-xs text-white/30" x-text="cronJobs.length + ' jobs'"></span>
-        </div>
-        <div class="overflow-x-auto scrollbar-thin">
-          <table class="w-full text-sm">
-            <thead>
-              <tr class="text-white/30 text-xs uppercase tracking-wider border-b border-white/5">
-                <th class="text-left p-4 font-medium">Profile</th>
-                <th class="text-left p-4 font-medium">Name</th>
-                <th class="text-left p-4 font-medium">Schedule</th>
-                <th class="text-left p-4 font-medium hidden md:table-cell">Prompt</th>
-                <th class="text-left p-4 font-medium">Last Run</th>
-                <th class="text-left p-4 font-medium">Status</th>
-              </tr>
-            </thead>
-            <tbody>
-              <template x-for="job in cronJobs" :key="job.id">
-                <tr class="border-b border-white/5 hover:bg-white/[0.02] transition-colors">
-                  <td class="p-4">
-                    <span class="px-2 py-0.5 rounded text-[11px] font-medium capitalize" 
-                          :class="job.profile === 'default' ? 'bg-violet-500/10 text-violet-300' : 'bg-emerald-500/10 text-emerald-300'"
-                          x-text="job.profile"></span>
-                  </td>
-                  <td class="p-4 font-medium" x-text="job.name"></td>
-                  <td class="p-4 text-white/60 mono text-xs" x-text="job.schedule"></td>
-                  <td class="p-4 text-white/40 text-xs hidden md:table-cell max-w-xs truncate" x-text="job.prompt"></td>
-                  <td class="p-4 text-white/40 text-xs" x-text="job.last_run"></td>
-                  <td class="p-4">
-                    <span class="flex items-center gap-1.5">
-                      <span class="status-dot" :class="job.enabled ? 'online' : 'offline'"></span>
-                      <span class="text-xs" :class="job.enabled ? 'text-emerald-400' : 'text-white/30'" x-text="job.enabled ? 'active' : 'paused'"></span>
-                    </span>
-                  </td>
-                </tr>
-              </template>
-            </tbody>
-          </table>
-        </div>
-      </div>
-    </div>
-
-    <!-- ============================== GATEWAY TAB ============================== -->
-    <div x-show="activeTab === 'gateway'" class="fade-in" x-cloak>
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-        <div class="glass-card p-5">
-          <h2 class="font-semibold mb-4">🔌 Platform Connections</h2>
-          <div class="space-y-3" x-show="gatewayData.gateway?.platforms">
-            <template x-for="(platform, name) in gatewayData.gateway.platforms" :key="name">
-              <div class="flex items-center justify-between p-3 rounded-xl bg-white/[0.02]">
-                <div class="flex items-center gap-3">
-                  <span class="status-dot" :class="platform.state === 'connected' ? 'online' : platform.state === 'paused' ? 'warning' : 'offline'"></span>
-                  <div>
-                    <div class="text-sm font-medium capitalize" x-text="name.replace(/_/g, ' ')"></div>
-                    <div class="text-xs text-white/30" x-text="platform.state"></div>
+          <!-- Profile Cards Grid -->
+          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+            <template x-for="(prof, i) in fleetProfiles" :key="prof.name">
+              <div class="glass-card cursor-pointer tilt-card stagger-item" :style="'animation-delay: ' + (i * 50) + 'ms'" @click="openProfile(prof.name)">
+                <div class="tilt-card-inner p-5" x-ref="tilt-`${prof.name}`">
+                  <div class="accent-bar" :style="'--bar-color1: ' + colorVal(prof.color, 0.6) + '; --bar-color2: ' + colorVal(prof.color, 0.1)"></div>
+                  <div class="flex items-start justify-between mb-3 relative z-10">
+                    <div class="flex items-center gap-2.5">
+                      <div class="w-10 h-10 rounded-xl flex items-center justify-center text-lg" :style="'background: ' + colorVal(prof.color, 0.08) + '; border: 1px solid ' + colorVal(prof.color, 0.15)">
+                        <span x-text="prof.icon"></span>
+                      </div>
+                      <div>
+                        <div class="font-semibold text-sm capitalize" x-text="prof.name.replace(/-/g, ' ')"></div>
+                        <div class="text-[11px] text-white/30 mono" x-text="prof.model"></div>
+                      </div>
+                    </div>
+                    <div class="flex items-center gap-1.5">
+                      <span class="status-dot" :class="prof.last_active !== '—' ? 'online' : 'offline'"></span>
+                      <span class="text-[11px] text-white/30" x-text="prof.last_active"></span>
+                    </div>
+                  </div>
+                  <p class="text-white/40 text-xs leading-relaxed mb-4 line-clamp-2 min-h-[2.5em]" x-text="prof.purpose"></p>
+                  <div class="flex gap-4 text-xs pt-3 border-t border-white/[0.03] relative z-10">
+                    <div><span class="text-white/30">Sessions</span> <span class="font-medium text-white/80" x-text="prof.sessions"></span></div>
+                    <div><span class="text-white/30">Msgs</span> <span class="font-medium text-white/80" x-text="prof.messages"></span></div>
+                    <div><span class="text-white/30">Cron</span> <span class="font-medium text-white/80" x-text="prof.cron_count || 0"></span></div>
+                    <div x-show="prof.cost > 0"><span class="text-white/30">Cost</span> <span class="font-medium text-white/80" x-text="'$' + prof.cost.toFixed(2)"></span></div>
+                  </div>
+                  <!-- Token usage mini bar -->
+                  <div class="mt-3 relative z-10" x-show="prof.sessions > 0">
+                    <div class="flex justify-between text-[10px] text-white/25 mb-1">
+                      <span>Activity</span>
+                      <span class="mono" x-text="formatNum(prof.tokens) + ' tokens'"></span>
+                    </div>
+                    <div class="w-full h-1 rounded-full bg-white/5 overflow-hidden">
+                      <div class="h-full rounded-full transition-all duration-700" :style="'width: ' + Math.min((prof.tokens / maxTokens) * 100, 100) + '%'" :class="'bg-' + prof.color + '-500/50'"></div>
+                    </div>
                   </div>
                 </div>
-                <div class="text-xs text-white/30" x-text="platform.state === 'connected' ? '☑' : platform.error_message || ''"></div>
               </div>
             </template>
           </div>
-          <div x-show="!gatewayData.gateway?.platforms" class="text-white/30 text-sm py-4 text-center">No platform data</div>
         </div>
 
-        <div class="glass-card p-5">
-          <h2 class="font-semibold mb-4">📱 Connected Channels</h2>
-          <div class="space-y-2" x-show="gatewayData.channels?.platforms">
-            <template x-for="(channels, platform) in gatewayData.channels.platforms" :key="platform">
-              <div x-show="channels.length > 0">
-                <div class="text-xs text-white/40 uppercase tracking-wider mb-1" x-text="platform"></div>
-                <template x-for="ch in channels" :key="ch.id">
-                  <div class="flex items-center gap-2 p-2 rounded-lg bg-white/[0.02] mb-1">
-                    <span class="status-dot online"></span>
-                    <span class="text-sm" x-text="ch.name"></span>
-                    <span class="text-xs text-white/30" x-text="ch.type"></span>
+        <!-- ═══ PIPELINE ═══ -->
+        <div x-show="activeTab === 'pipeline'" class="tab-content" :class="tabAnimClass">
+          <div class="glass-card p-6 mb-6 stagger-item">
+            <h2 class="text-lg font-semibold mb-1">📋 Core Workflow</h2>
+            <p class="text-white/35 text-sm">Paper → Dissection → Visuals + Written + Video</p>
+          </div>
+
+          <div class="glass-card p-8 mb-8 overflow-x-auto stagger-item">
+            <!-- Main pipeline: Clinical → Dissector -->
+            <div class="flex items-center justify-center gap-2 min-w-max mb-10">
+              <template x-for="(stage, i) in pipelineMain" :key="stage.id">
+                <div class="flex items-center">
+                  <div class="flex flex-col items-center w-32">
+                    <div class="pipeline-node" :style="'--node-color: ' + nodeColor(stage.icon) + '; background: ' + nodeBg(stage.icon)">
+                      <span x-text="stage.icon"></span>
+                    </div>
+                    <div class="text-xs font-medium mt-2 text-center" x-text="stage.name"></div>
+                    <div class="text-[10px] text-white/30 text-center" x-text="stage.output"></div>
+                    <div class="flex items-center gap-1.5 mt-2">
+                      <span class="status-dot" :class="stage.last_active !== 'never' ? 'online' : 'offline'"></span>
+                      <span class="text-[10px] text-white/40" x-text="stage.last_active"></span>
+                    </div>
+                  </div>
+                  <div class="pipeline-arrow mx-2">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M13 7l5 5m0 0l-5 5m5-5H6"/></svg>
+                  </div>
+                </div>
+              </template>
+            </div>
+            
+            <!-- Branch visualization -->
+            <div class="relative">
+              <div class="absolute left-1/2 -top-6 w-px h-6 bg-gradient-to-b from-violet-500/30 to-transparent -translate-x-1/2"></div>
+              <div class="flex justify-center gap-8 pt-6 border-t border-white/5 flex-wrap">
+                <template x-for="(stage, i) in pipelineBranch" :key="stage.id">
+                  <div class="flex flex-col items-center w-24 stagger-item" :style="'animation-delay: ' + (i * 80) + 'ms'">
+                    <div class="w-12 h-12 rounded-xl flex items-center justify-center text-lg mb-1.5"
+                         :style="'background: ' + nodeBg(stage.icon) + '; border: 1px solid ' + nodeBorder(stage.icon)">
+                      <span x-text="stage.icon"></span>
+                    </div>
+                    <span class="text-[11px] text-white/70 font-medium text-center" x-text="stage.name"></span>
+                    <span class="text-[10px] text-white/30" x-text="stage.sessions + ' sessions'"></span>
+                    <span class="text-[10px] text-white/30" x-text="stage.last_active"></span>
                   </div>
                 </template>
               </div>
-            </template>
-          </div>
-          <div x-show="!gatewayData.channels?.platforms" class="text-white/30 text-sm py-4 text-center">No channel data</div>
-        </div>
-      </div>
-
-      <!-- Gateway Raw State -->
-      <div class="glass-card p-5">
-        <div class="flex items-center justify-between mb-3">
-          <h2 class="font-semibold">📡 Gateway State</h2>
-          <span class="px-2 py-0.5 rounded text-xs font-medium"
-                :class="gatewayData.gateway?.gateway_state === 'running' ? 'bg-emerald-500/10 text-emerald-300' : 'bg-amber-500/10 text-amber-300'"
-                x-text="gatewayData.gateway?.gateway_state || 'unknown'"></span>
-        </div>
-        <pre class="text-xs text-white/30 leading-relaxed mono whitespace-pre-wrap" x-text="JSON.stringify(gatewayData.gateway, null, 2)"></pre>
-      </div>
-    </div>
-
-    <!-- ============================== SYSTEM TAB ============================== -->
-    <div x-show="activeTab === 'system'" class="fade-in" x-cloak>
-      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 mb-8">
-        <div class="glass-card p-5">
-          <h3 class="text-white/40 text-xs font-medium uppercase tracking-wider mb-3">💾 Disk Usage</h3>
-          <div class="text-3xl font-bold mb-1" x-text="systemData.disk?.used_pct + '%'"></div>
-          <div class="w-full h-2 rounded-full bg-white/5 mb-2 overflow-hidden">
-            <div class="h-full rounded-full transition-all duration-500" 
-                 :style="'width: ' + (systemData.disk?.used_pct || 0) + '%'"
-                 :class="(systemData.disk?.used_pct || 0) > 80 ? 'bg-rose-500' : (systemData.disk?.used_pct || 0) > 60 ? 'bg-amber-500' : 'bg-emerald-500'"></div>
-          </div>
-          <div class="text-xs text-white/40">
-            <span x-text="systemData.disk?.used_gb + ' GB'"></span> / <span x-text="systemData.disk?.total_gb + ' GB'"></span>
-            <span class="ml-2" x-text="systemData.disk?.free_gb + ' GB free'"></span>
-          </div>
-        </div>
-        <div class="glass-card p-5">
-          <h3 class="text-white/40 text-xs font-medium uppercase tracking-wider mb-3">🗄️ Data Store</h3>
-          <div class="text-3xl font-bold mb-1" x-text="formatNum(systemData.total_sessions || 0)"></div>
-          <div class="text-xs text-white/40">sessions across all profiles</div>
-          <div class="mt-3 space-y-1 text-xs text-white/30">
-            <div>Home size: <span class="text-white/60" x-text="systemData.home_size_mb + ' MB'"></span></div>
-            <div>state.db: <span class="text-white/60" x-text="systemData.state_db_mb + ' MB'"></span></div>
-            <div>Est. cost: <span class="text-white/60" x-text="'$' + (systemData.total_cost || 0).toFixed(4)"></span></div>
-          </div>
-        </div>
-        <div class="glass-card p-5">
-          <h3 class="text-white/40 text-xs font-medium uppercase tracking-wider mb-3">📦 Hermes</h3>
-          <div class="text-3xl font-bold mb-1 mono text-sm" x-text="systemData.hermes_version || '?'"></div>
-          <div class="text-xs text-white/40">version</div>
-          <div class="mt-3 space-y-1 text-xs text-white/30">
-            <div>Profiles: <span class="text-white/60" x-text="systemData.profiles_count"></span></div>
-            <div>Home: <span class="text-white/60 mono text-[10px]" x-text="systemData.hermes_home"></span></div>
-          </div>
-        </div>
-      </div>
-      <div class="glass-card p-5">
-        <h3 class="text-white/40 text-xs font-medium uppercase tracking-wider mb-3">Recent Activity</h3>
-        <div class="space-y-2" x-show="activityFeed.length > 0">
-          <template x-for="ev in activityFeed.slice(0, 15)" :key="ev.title + ev.when">
-            <div class="flex items-center justify-between p-2 rounded-lg hover:bg-white/[0.02] text-sm">
-              <div class="flex items-center gap-3 min-w-0">
-                <span class="text-xs px-1.5 py-0.5 rounded capitalize font-medium"
-                      :class="ev.profile === 'default' ? 'bg-violet-500/10 text-violet-300' : 'bg-emerald-500/10 text-emerald-300'"
-                      x-text="ev.profile"></span>
-                <span class="truncate" x-text="ev.title"></span>
-              </div>
-              <div class="flex items-center gap-3 text-xs text-white/30 shrink-0">
-                <span x-text="ev.source"></span>
-                <span x-text="ev.messages + ' msgs'"></span>
-                <span x-text="ev.when"></span>
-              </div>
             </div>
+          </div>
+
+          <div class="glass-card p-6 stagger-item">
+            <div class="flex items-center gap-2 text-sm text-white/40 uppercase tracking-wider mb-3">
+              <span>📄</span><span>Pipeline Definition</span>
+            </div>
+            <pre class="text-xs text-white/30 leading-relaxed whitespace-pre-wrap mono max-h-48 overflow-y-auto scrollbar-thin scanline" x-text="pipelineDoc"></pre>
+          </div>
+        </div>
+
+        <!-- ═══ CRON ═══ -->
+        <div x-show="activeTab === 'cron'" class="tab-content" :class="tabAnimClass">
+          <div class="glass-card overflow-hidden scanline">
+            <div class="p-5 border-b border-white/5 flex items-center justify-between">
+              <div class="flex items-center gap-2">
+                <span class="text-lg">⏰</span>
+                <h2 class="font-semibold">Scheduled Jobs</h2>
+              </div>
+              <span class="text-xs text-white/30 bg-white/5 px-2.5 py-1 rounded-full" x-text="cronJobs.length + ' jobs'"></span>
+            </div>
+            <div class="overflow-x-auto scrollbar-thin">
+              <table class="w-full text-sm">
+                <thead>
+                  <tr class="text-white/25 text-xs uppercase tracking-widest border-b border-white/5">
+                    <th class="text-left p-4 font-medium">Profile</th><th class="text-left p-4 font-medium">Name</th>
+                    <th class="text-left p-4 font-medium">Schedule</th><th class="text-left p-4 font-medium hidden md:table-cell">Prompt</th>
+                    <th class="text-left p-4 font-medium">Last Run</th><th class="text-left p-4 font-medium">Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <template x-for="(job, i) in cronJobs" :key="job.id">
+                    <tr class="border-b border-white/[0.02] hover:bg-white/[0.015] transition-colors stagger-item" :style="'animation-delay: ' + (i * 30) + 'ms'">
+                      <td class="p-4"><span class="px-2 py-0.5 rounded text-[10px] font-medium capitalize" :class="job.profile === 'default' ? 'bg-violet-500/10 text-violet-300' : 'bg-emerald-500/10 text-emerald-300'" x-text="job.profile"></span></td>
+                      <td class="p-4 font-medium text-sm" x-text="job.name"></td>
+                      <td class="p-4 text-white/50 mono text-xs" x-text="job.schedule"></td>
+                      <td class="p-4 text-white/35 text-xs hidden md:table-cell max-w-xs truncate" x-text="job.prompt"></td>
+                      <td class="p-4 text-white/40 text-xs mono" x-text="job.last_run"></td>
+                      <td class="p-4"><span class="flex items-center gap-1.5"><span class="status-dot" :class="job.enabled ? 'online' : 'offline'"></span><span class="text-xs" :class="job.enabled ? 'text-emerald-400' : 'text-white/30'" x-text="job.enabled ? 'active' : 'paused'"></span></span></td>
+                    </tr>
+                  </template>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- ═══ GATEWAY ═══ -->
+        <div x-show="activeTab === 'gateway'" class="tab-content" :class="tabAnimClass">
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+            <div class="glass-card p-5 stagger-item">
+              <h2 class="font-semibold mb-4 flex items-center gap-2">🔌 <span>Platform Connections</span></h2>
+              <div class="space-y-3" x-show="gatewayPlatforms">
+                <template x-for="(platform, name) in gatewayPlatforms" :key="name">
+                  <div class="flex items-center justify-between p-3 rounded-xl bg-white/[0.015] hover:bg-white/[0.025] transition-colors">
+                    <div class="flex items-center gap-3">
+                      <span class="status-dot" :class="platform.state === 'connected' ? 'online' : platform.state === 'paused' ? 'warning' : 'offline'"></span>
+                      <div><div class="text-sm font-medium capitalize" x-text="name.replace(/_/g, ' ')"></div><div class="text-xs text-white/30" x-text="platform.state"></div></div>
+                    </div>
+                    <div class="text-xs text-white/30" x-text="platform.state === 'connected' ? '☑ Connected' : platform.error_message || ''"></div>
+                  </div>
+                </template>
+              </div>
+              <div x-show="!gatewayPlatforms" class="text-white/25 text-sm py-4 text-center">No platform data</div>
+            </div>
+            <div class="glass-card p-5 stagger-item" :style="'animation-delay: 60ms'">
+              <h2 class="font-semibold mb-4 flex items-center gap-2">📱 <span>Connected Channels</span></h2>
+              <div class="space-y-2" x-show="gatewayChannels">
+                <template x-for="(channels, platform) in gatewayChannels" :key="platform">
+                  <div x-show="channels.length > 0">
+                    <div class="text-xs text-white/30 uppercase tracking-wider mb-1.5" x-text="platform"></div>
+                    <template x-for="ch in channels" :key="ch.id">
+                      <div class="flex items-center gap-2 p-2 rounded-lg bg-white/[0.015] mb-1">
+                        <span class="status-dot online"></span><span class="text-sm" x-text="ch.name"></span>
+                        <span class="text-xs text-white/25" x-text="ch.type"></span>
+                      </div>
+                    </template>
+                  </div>
+                </template>
+              </div>
+              <div x-show="!gatewayChannels" class="text-white/25 text-sm py-4 text-center">No channel data</div>
+            </div>
+          </div>
+          <div class="glass-card p-5 stagger-item" :style="'animation-delay: 120ms'">
+            <div class="flex items-center justify-between mb-3">
+              <h2 class="font-semibold flex items-center gap-2">📡 <span>Gateway State</span></h2>
+              <span class="px-2.5 py-0.5 rounded-full text-xs font-medium"
+                    :class="gatewayRunning ? 'bg-emerald-500/10 text-emerald-300 border border-emerald-500/20' : 'bg-amber-500/10 text-amber-300 border border-amber-500/20'"
+                    x-text="gatewayRunning ? 'running' : 'stopped'"></span>
+            </div>
+            <pre class="text-xs text-white/25 leading-relaxed mono whitespace-pre-wrap max-h-40 overflow-y-auto scrollbar-thin" x-text="JSON.stringify(gatewayRaw, null, 2)"></pre>
+          </div>
+        </div>
+
+        <!-- ═══ SYSTEM ═══ -->
+        <div x-show="activeTab === 'system'" class="tab-content" :class="tabAnimClass">
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-5 mb-6">
+            <div class="glass-card p-5 stagger-item">
+              <div class="text-white/35 text-[10px] font-medium uppercase tracking-widest mb-3">💾 Disk Usage</div>
+              <div class="text-3xl font-bold mb-1" x-text="systemData.disk?.used_pct + '%'"></div>
+              <div class="w-full h-1.5 rounded-full bg-white/5 mb-2 overflow-hidden">
+                <div class="h-full rounded-full transition-all duration-1000 ease-out" :style="'width: ' + (systemData.disk?.used_pct || 0) + '%'"
+                     :class="(systemData.disk?.used_pct || 0) > 80 ? 'bg-rose-500' : (systemData.disk?.used_pct || 0) > 60 ? 'bg-amber-500' : 'bg-emerald-500'"></div>
+              </div>
+              <div class="text-xs text-white/35"><span x-text="systemData.disk?.used_gb + ' GB'"></span> / <span x-text="systemData.disk?.total_gb + ' GB'"></span> <span class="ml-2" x-text="systemData.disk?.free_gb + ' GB free'"></span></div>
+            </div>
+            <div class="glass-card p-5 stagger-item" :style="'animation-delay: 60ms'">
+              <div class="text-white/35 text-[10px] font-medium uppercase tracking-widest mb-3">🗄️ Data Store</div>
+              <div class="text-3xl font-bold mb-1" x-text="formatNum(systemData.total_sessions || 0)"></div>
+              <div class="text-xs text-white/35">sessions across all profiles</div>
+              <div class="mt-3 space-y-1 text-xs text-white/25"><div>Home: <span class="text-white/50" x-text="systemData.home_size_mb + ' MB'"></span></div><div>state.db: <span class="text-white/50" x-text="systemData.state_db_mb + ' MB'"></span></div><div>Cost: <span class="text-white/50" x-text="'$' + (systemData.total_cost || 0).toFixed(4)"></span></div></div>
+            </div>
+            <div class="glass-card p-5 stagger-item" :style="'animation-delay: 120ms'">
+              <div class="text-white/35 text-[10px] font-medium uppercase tracking-widest mb-3">📦 Hermes</div>
+              <div class="text-3xl font-bold mb-1 mono text-sm" x-text="systemData.hermes_version || '?'"></div>
+              <div class="text-xs text-white/35">version</div>
+              <div class="mt-3 space-y-1 text-xs text-white/25"><div>Profiles: <span class="text-white/50" x-text="systemData.profiles_count"></span></div><div>Home: <span class="text-white/50 mono text-[10px] break-all" x-text="systemData.hermes_home"></span></div></div>
+            </div>
+          </div>
+          <div class="glass-card p-5 scanline">
+            <div class="flex items-center gap-2 text-sm text-white/40 uppercase tracking-wider mb-3">
+              <span>📋</span><span>Recent Activity</span>
+            </div>
+            <div class="space-y-2 max-h-80 overflow-y-auto scrollbar-thin" x-show="activityFeed.length > 0">
+              <template x-for="(ev, i) in activityFeed.slice(0, 20)" :key="ev.title + ev.when">
+                <div class="flex items-center justify-between p-2 rounded-lg hover:bg-white/[0.015] text-sm stagger-item" :style="'animation-delay: ' + (i * 30) + 'ms'">
+                  <div class="flex items-center gap-3 min-w-0">
+                    <span class="text-[10px] px-1.5 py-0.5 rounded capitalize font-medium" :class="ev.profile === 'default' ? 'bg-violet-500/10 text-violet-300' : 'bg-emerald-500/10 text-emerald-300'" x-text="ev.profile"></span>
+                    <span class="truncate text-white/80" x-text="ev.title"></span>
+                  </div>
+                  <div class="flex items-center gap-3 text-xs text-white/25 shrink-0"><span x-text="ev.source"></span><span x-text="ev.messages + ' msgs'"></span><span x-text="ev.when"></span></div>
+                </div>
+              </template>
+            </div>
+            <div x-show="activityFeed.length === 0" class="text-white/25 text-sm py-4 text-center">No recent activity</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Loading Skeleton -->
+      <div x-show="loading" class="space-y-6">
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <template x-for="i in 4" :key="i">
+            <div class="glass-card p-5"><div class="skeleton h-3 w-16 mb-3"></div><div class="skeleton h-8 w-24 mb-2"></div><div class="skeleton h-3 w-20"></div></div>
           </template>
         </div>
-        <div x-show="activityFeed.length === 0" class="text-white/30 text-sm py-4 text-center">No recent activity</div>
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+          <template x-for="i in 6" :key="i">
+            <div class="glass-card p-5 shimmer"><div class="skeleton h-4 w-32 mb-4"></div><div class="skeleton h-3 w-full mb-2"></div><div class="skeleton h-3 w-3/4 mb-4"></div><div class="skeleton h-4 w-24"></div></div>
+          </template>
+        </div>
       </div>
     </div>
 
-    <!-- ============================== LOADING ============================== -->
-    <div x-show="loading" class="flex items-center justify-center py-24">
-      <div class="flex flex-col items-center gap-4">
-        <div class="w-10 h-10 border-2 border-violet-500/30 border-t-violet-400 rounded-full animate-spin"></div>
-        <span class="text-white/30 text-sm">Connecting to Hermes...</span>
+    <!-- ═══ DRAWER ═══ -->
+    <template x-if="drawerOpen && drawerProfile">
+      <div class="fixed inset-0 z-50 flex justify-end">
+        <div class="absolute inset-0 bg-black/50 backdrop-blur-sm" @click="drawerOpen = false"></div>
+        <div class="drawer-panel relative w-full max-w-xl bg-[#0a0a12] border-l border-white/10 overflow-y-auto scrollbar-thin">
+          <div class="sticky top-0 bg-[#0a0a12]/90 backdrop-blur-md border-b border-white/5 p-5 flex items-center justify-between z-10">
+            <div class="flex items-center gap-3">
+              <div class="w-10 h-10 rounded-xl flex items-center justify-center text-xl" :style="'background: ' + colorVal(drawerColor, 0.08) + '; border: 1px solid ' + colorVal(drawerColor, 0.15)">
+                <span x-text="drawerProfile.icon || '⚙️'"></span>
+              </div>
+              <div><h2 class="font-semibold capitalize" x-text="drawerProfile.name?.replace(/-/g, ' ')"></h2><span class="text-xs text-white/30 mono" x-text="drawerProfile.model || '?'"></span></div>
+            </div>
+            <button @click="drawerOpen = false" class="p-2 rounded-xl hover:bg-white/5 transition-colors text-white/40 hover:text-white"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg></button>
+          </div>
+          <div class="p-5 space-y-5">
+            <div class="grid grid-cols-4 gap-3">
+              <div class="glass rounded-xl p-3 text-center"><div class="text-xl font-bold" x-text="drawerDetail?.stats?.total_sessions || 0"></div><div class="text-[10px] text-white/30">Sessions</div></div>
+              <div class="glass rounded-xl p-3 text-center"><div class="text-xl font-bold" x-text="drawerDetail?.stats?.total_messages || 0"></div><div class="text-[10px] text-white/30">Messages</div></div>
+              <div class="glass rounded-xl p-3 text-center"><div class="text-xl font-bold mono text-sm" x-text="formatNum(drawerDetail?.stats?.total_tokens || 0)"></div><div class="text-[10px] text-white/30">Tokens</div></div>
+              <div class="glass rounded-xl p-3 text-center"><div class="text-xl font-bold mono text-sm" x-text="'$' + (drawerDetail?.stats?.total_cost || 0).toFixed(2)"></div><div class="text-[10px] text-white/30">Cost</div></div>
+            </div>
+            <div><h3 class="text-[10px] text-white/30 uppercase tracking-widest mb-2">Identity (SOUL.md)</h3><div class="glass rounded-xl p-4"><p class="text-xs text-white/50 leading-relaxed max-h-32 overflow-y-auto scrollbar-thin" x-text="drawerDetail?.soul?.slice(0, 600) || '—'"></p></div></div>
+            <div x-show="drawerDetail?.skills?.length > 0"><h3 class="text-[10px] text-white/30 uppercase tracking-widest mb-2">Skills</h3><div class="flex flex-wrap gap-1.5"><template x-for="sk in drawerDetail?.skills" :key="sk"><span class="px-2 py-0.5 rounded-full text-[11px] bg-violet-500/8 text-violet-300 border border-violet-500/15" x-text="sk"></span></template></div></div>
+            <div x-show="drawerDetail?.cron_jobs?.length > 0"><h3 class="text-[10px] text-white/30 uppercase tracking-widest mb-2">Scheduled Jobs</h3><div class="space-y-2"><template x-for="job in drawerDetail.cron_jobs" :key="job.id"><div class="flex items-center justify-between glass rounded-xl p-3"><div><div class="text-sm font-medium" x-text="job.name"></div><div class="text-xs text-white/30 mono" x-text="job.schedule"></div></div><span class="status-dot" :class="job.enabled ? 'online' : 'offline'"></span></div></template></div></div>
+            <div><h3 class="text-[10px] text-white/30 uppercase tracking-widest mb-2">Recent Sessions</h3><div class="space-y-2"><template x-for="s in drawerDetail?.sessions?.slice(0, 8)" :key="s.id"><div class="glass rounded-xl p-3"><div class="flex items-center justify-between mb-1"><span class="text-sm font-medium truncate" x-text="s.title || 'Untitled'"></span><span class="text-[10px] px-1.5 py-0.5 rounded capitalize" :class="s.end_reason === 'active' ? 'bg-emerald-500/10 text-emerald-300' : 'bg-white/5 text-white/30'" x-text="s.end_reason"></span></div><div class="flex gap-3 text-[11px] text-white/25"><span x-text="s.source"></span><span x-text="s.message_count + ' msgs'"></span><span x-text="s.model?.slice(0, 20)"></span><span x-text="'$' + (s.cost || 0).toFixed(4)"></span></div></div></template><div x-show="!drawerDetail?.sessions?.length" class="text-white/25 text-sm py-4 text-center">No sessions yet</div></div></div>
+          </div>
+        </div>
       </div>
-    </div>
+    </template>
   </div>
 
-  <!-- ============================== DRAWER ============================== -->
-  <template x-if="drawerOpen && drawerProfile">
-    <div class="fixed inset-0 z-50 flex justify-end">
-      <div class="absolute inset-0 bg-black/60 backdrop-blur-sm" @click="drawerOpen = false"></div>
-      <div class="relative w-full max-w-xl bg-[#0d0d16] border-l border-white/10 overflow-y-auto slide-in scrollbar-thin">
-        <div class="sticky top-0 bg-[#0d0d16]/90 backdrop-blur-md border-b border-white/5 p-5 flex items-center justify-between">
-          <div class="flex items-center gap-3">
-            <span class="text-2xl" x-text="drawerProfile.icon || '⚙️'"></span>
-            <div>
-              <h2 class="font-semibold capitalize" x-text="drawerProfile.name?.replace(/-/g, ' ')"></h2>
-              <span class="text-xs text-white/30" x-text="drawerProfile.model || '?'"></span>
-            </div>
-          </div>
-          <button @click="drawerOpen = false" class="p-2 rounded-xl hover:bg-white/5 transition-colors text-white/40 hover:text-white">
-            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
-          </button>
-        </div>
-        <div class="p-5 space-y-6">
-          <!-- Stats Grid -->
-          <div class="grid grid-cols-3 gap-3">
-            <div class="glass rounded-xl p-3 text-center">
-              <div class="text-2xl font-bold" x-text="drawerDetail?.stats?.total_sessions || 0"></div>
-              <div class="text-[10px] text-white/30">Sessions</div>
-            </div>
-            <div class="glass rounded-xl p-3 text-center">
-              <div class="text-2xl font-bold" x-text="drawerDetail?.stats?.total_messages || 0"></div>
-              <div class="text-[10px] text-white/30">Messages</div>
-            </div>
-            <div class="glass rounded-xl p-3 text-center">
-              <div class="text-2xl font-bold mono text-sm" x-text="formatNum(drawerDetail?.stats?.total_tokens || 0)"></div>
-              <div class="text-[10px] text-white/30">Tokens</div>
-            </div>
-          </div>
-
-          <!-- SOUL.md -->
-          <div>
-            <h3 class="text-xs text-white/40 uppercase tracking-wider mb-2">Identity (SOUL.md)</h3>
-            <div class="glass rounded-xl p-4">
-              <p class="text-xs text-white/60 leading-relaxed" x-text="drawerDetail?.soul?.slice(0, 500) || '—'"></p>
-            </div>
-          </div>
-
-          <!-- Skills -->
-          <div x-show="drawerDetail?.skills?.length > 0">
-            <h3 class="text-xs text-white/40 uppercase tracking-wider mb-2">Skills</h3>
-            <div class="flex flex-wrap gap-2">
-              <template x-for="sk in drawerDetail?.skills" :key="sk">
-                <span class="px-2.5 py-1 rounded-full text-xs bg-violet-500/10 text-violet-300 border border-violet-500/20" x-text="sk"></span>
-              </template>
-            </div>
-          </div>
-
-          <!-- Cron Jobs -->
-          <div x-show="drawerDetail?.cron_jobs?.length > 0">
-            <h3 class="text-xs text-white/40 uppercase tracking-wider mb-2">Scheduled Jobs</h3>
-            <div class="space-y-2">
-              <template x-for="job in drawerDetail.cron_jobs" :key="job.id">
-                <div class="flex items-center justify-between glass rounded-xl p-3">
-                  <div>
-                    <div class="text-sm font-medium" x-text="job.name"></div>
-                    <div class="text-xs text-white/30 mono" x-text="job.schedule"></div>
-                  </div>
-                  <span class="status-dot" :class="job.enabled ? 'online' : 'offline'"></span>
-                </div>
-              </template>
-            </div>
-          </div>
-
-          <!-- Recent Sessions -->
-          <div>
-            <h3 class="text-xs text-white/40 uppercase tracking-wider mb-2">Recent Sessions</h3>
-            <div class="space-y-2">
-              <template x-for="s in drawerDetail?.sessions?.slice(0, 10)" :key="s.id">
-                <div class="glass rounded-xl p-3">
-                  <div class="flex items-center justify-between mb-1">
-                    <span class="text-sm font-medium truncate" x-text="s.title || 'Untitled'"></span>
-                    <span class="text-[10px] px-1.5 py-0.5 rounded capitalize" 
-                          :class="s.end_reason === 'active' ? 'bg-emerald-500/10 text-emerald-300' : 'bg-white/5 text-white/30'"
-                          x-text="s.end_reason"></span>
-                  </div>
-                  <div class="flex gap-3 text-[11px] text-white/30">
-                    <span x-text="s.source"></span>
-                    <span x-text="s.message_count + ' msgs'"></span>
-                    <span x-text="s.model?.slice(0, 25)"></span>
-                    <span x-text="'$' + (s.cost || 0).toFixed(4)"></span>
-                  </div>
-                </div>
-              </template>
-              <div x-show="!drawerDetail?.sessions?.length" class="text-white/30 text-sm py-4 text-center">No sessions yet</div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  </template>
-
-  <!-- x-cloak -->
-  <style>[x-cloak] { display: none !important; }</style>
-
   <script>
+    // ── Particle System ──
+    (function initParticles() {
+      const canvas = document.getElementById('particle-canvas');
+      if (!canvas) return;
+      const ctx = canvas.getContext('2d');
+      let particles = [];
+      let mouse = { x: 0, y: 0 };
+      let W, H;
+
+      function resize() { W = canvas.width = window.innerWidth; H = canvas.height = window.innerHeight; }
+      window.addEventListener('resize', resize);
+      resize();
+
+      document.addEventListener('mousemove', e => { mouse.x = e.clientX; mouse.y = e.clientY; });
+
+      const COLORS = ['rgba(139,92,246,', 'rgba(34,211,238,', 'rgba(52,211,153,'];
+      const COUNT = 280;
+
+      for (let i = 0; i < COUNT; i++) {
+        particles.push({
+          x: Math.random() * W, y: Math.random() * H,
+          vx: (Math.random() - 0.5) * 0.4, vy: (Math.random() - 0.5) * 0.4,
+          r: Math.random() * 2 + 1,
+          color: COLORS[Math.floor(Math.random() * COLORS.length)],
+          alpha: Math.random() * 0.4 + 0.1,
+        });
+      }
+
+      function animate() {
+        ctx.clearRect(0, 0, W, H);
+        for (let i = 0; i < particles.length; i++) {
+          const p = particles[i];
+          // Mouse parallax
+          const dx = mouse.x - W / 2;
+          const dy = mouse.y - H / 2;
+          p.x += p.vx + dx * 0.00002;
+          p.y += p.vy + dy * 0.00002;
+          if (p.x < 0) p.x = W; if (p.x > W) p.x = 0;
+          if (p.y < 0) p.y = H; if (p.y > H) p.y = 0;
+          ctx.beginPath();
+          ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+          ctx.fillStyle = p.color + p.alpha + ')';
+          ctx.fill();
+          // Connections
+          for (let j = i + 1; j < particles.length; j++) {
+            const p2 = particles[j];
+            const dist = Math.hypot(p.x - p2.x, p.y - p2.y);
+            if (dist < 120) {
+              ctx.beginPath();
+              ctx.moveTo(p.x, p.y);
+              ctx.lineTo(p2.x, p2.y);
+              ctx.strokeStyle = `rgba(139,92,246,${(1 - dist / 120) * 0.06})`;
+              ctx.stroke();
+            }
+          }
+        }
+        requestAnimationFrame(animate);
+      }
+      animate();
+    })();
+
+    // ── Alpine.js App ──
     function missionControl() {
       return {
-        // State
         activeTab: 'fleet',
         loading: true,
         connected: false,
         lastUpdate: '',
+        tabAnimClass: 'entering',
         drawerOpen: false,
         drawerProfile: null,
         drawerDetail: null,
         tabs: [
-          { id: 'fleet', label: '🚀 Fleet' },
-          { id: 'pipeline', label: '🔗 Pipeline' },
-          { id: 'cron', label: '⏰ Cron' },
-          { id: 'gateway', label: '📡 Gateway' },
-          { id: 'system', label: '⚙️ System' },
+          { id: 'fleet',     label: '🚀 Fleet' },
+          { id: 'pipeline',  label: '🔗 Pipeline' },
+          { id: 'cron',      label: '⏰ Cron' },
+          { id: 'gateway',   label: '📡 Gateway' },
+          { id: 'system',    label: '⚙️ System' },
         ],
-        fleet: { profiles: [] },
+        // Data
+        fleetRaw: { profiles: [] },
         gatewayData: { gateway: {}, channels: {} },
         cronJobs: [],
         pipelineStages: [],
@@ -469,121 +533,128 @@
         pipelineDoc: '',
         systemData: {},
         activityFeed: [],
-        colorMap: {
-          emerald: '#34d399, #059669',
-          violet: '#a78bfa, #7c3aed',
-          amber: '#fbbf24, #d97706',
-          sky: '#38bdf8, #0284c7',
-          rose: '#fb7185, #e11d48',
-          blue: '#60a5fa, #2563eb',
-          cyan: '#22d3ee, #0891b2',
-          purple: '#c084fc, #9333ea',
-          slate: '#94a3b8, #475569',
+        // Sparkline dummy data (will be replaced by real data)
+        tokenHistory: [],
+
+        // ── Computed ──
+        get fleetStats() {
+          const p = this.fleetRaw.profiles || [];
+          const totalSess = p.reduce((s, pr) => s + (pr.sessions || 0), 0);
+          const totalMsgs = p.reduce((s, pr) => s + (pr.messages || 0), 0);
+          const totalTokens = p.reduce((s, pr) => s + (pr.tokens || 0), 0);
+          const totalCost = p.reduce((s, pr) => s + (pr.cost || 0), 0);
+          const active = p.filter(pr => pr.last_active !== '—').length;
+          const spark = this.genSpark(8);
+          return [
+            { label: 'Profiles', value: p.length, sublabel: 'agents deployed', sparkline: null, glow: 'glow-violet' },
+            { label: 'Sessions', value: this.fmt(totalSess), sublabel: 'across all profiles', sparkline: spark, sparkColor: '#a78bfa' },
+            { label: 'Active', value: active, sublabel: 'agents with recent activity', sparkline: null, glow: 'glow-emerald' },
+            { label: 'Tokens', value: this.formatNum(totalTokens), sublabel: 'total usage', sparkline: this.genSpark(8), sparkColor: '#22d3ee' },
+          ];
         },
-        stageColors: {
-          '🩺': 'rgba(16,185,129,0.15)',
-          '🔬': 'rgba(139,92,246,0.15)',
-          '📊': 'rgba(251,191,36,0.15)',
-          '✍️': 'rgba(56,189,248,0.15)',
-          '🎬': 'rgba(244,63,94,0.15)',
-          '🐦': 'rgba(96,165,250,0.15)',
+        get fleetProfiles() { return this.fleetRaw.profiles || []; },
+        get maxTokens() {
+          const p = this.fleetProfiles;
+          return Math.max(...p.map(pr => pr.tokens || 0), 1);
         },
-        stageBorders: {
-          '🩺': 'rgba(16,185,129,0.3)',
-          '🔬': 'rgba(139,92,246,0.3)',
-          '📊': 'rgba(251,191,36,0.3)',
-          '✍️': 'rgba(56,189,248,0.3)',
-          '🎬': 'rgba(244,63,94,0.3)',
-          '🐦': 'rgba(96,165,250,0.3)',
+        get pipelineMain() { return this.pipelineStages.slice(0, 2); },
+        get gatewayPlatforms() { return this.gatewayData.gateway?.platforms || null; },
+        get gatewayChannels() { return this.gatewayData.channels?.platforms || null; },
+        get gatewayRaw() { return this.gatewayData.gateway || {}; },
+        get gatewayRunning() { return this.gatewayData.gateway?.gateway_state === 'running'; },
+        get drawerColor() { return this.fleetProfiles.find(p => p.name === this.drawerProfile?.name)?.color || 'violet'; },
+
+        // ── Helpers ──
+        fmt(n) { return typeof n === 'number' ? n : (n || 0); },
+        formatNum(n) { if (!n) return '0'; if (n >= 1e9) return (n / 1e9).toFixed(1) + 'B'; if (n >= 1e6) return (n / 1e6).toFixed(1) + 'M'; if (n >= 1e3) return (n / 1e3).toFixed(1) + 'K'; return String(n); },
+        colorVal(color, opacity) {
+          const map = { emerald: 'rgba(52,211,153,'+opacity+')', violet: 'rgba(139,92,246,'+opacity+')', amber: 'rgba(251,191,36,'+opacity+')', sky: 'rgba(56,189,248,'+opacity+')', rose: 'rgba(244,63,94,'+opacity+')', blue: 'rgba(96,165,250,'+opacity+')', cyan: 'rgba(34,211,238,'+opacity+')', purple: 'rgba(192,132,252,'+opacity+')', slate: 'rgba(148,163,184,'+opacity+')' };
+          return map[color] || 'rgba(148,163,184,'+opacity+')';
+        },
+        nodeColor(icon) {
+          const map = { '🩺': '#34d399', '🔬': '#a78bfa', '📊': '#fbbf24', '✍️': '#38bdf8', '🎬': '#fb7185', '🐦': '#60a5fa' };
+          return map[icon] || '#94a3b8';
+        },
+        nodeBg(icon) { return this.nodeColor(icon) + '15'; },
+        nodeBorder(icon) { return this.nodeColor(icon) + '30'; },
+        sparklinePath(data, w, h) {
+          if (!data || data.length < 2) return '';
+          const min = Math.min(...data), max = Math.max(...data);
+          const range = max - min || 1;
+          const step = w / (data.length - 1);
+          return data.map((v, i) => `${i === 0 ? 'M' : 'L'}${i * step},${h - ((v - min) / range) * (h - 4) - 2}`).join(' ');
+        },
+        genSpark(len) { const a = []; for (let i = 0; i < len; i++) a.push(Math.random() * 100 + 20); return a; },
+
+        // ── Tab Switching ──
+        switchTab(id) {
+          if (id === this.activeTab) return;
+          this.tabAnimClass = 'leaving';
+          setTimeout(() => {
+            this.activeTab = id;
+            this.tabAnimClass = 'entering';
+            setTimeout(() => { this.tabAnimClass = ''; }, 400);
+          }, 250);
         },
 
-        // Computed
-        get totalSessions() {
-          return this.fleet.profiles?.reduce((sum, p) => sum + (p.sessions || 0), 0) || 0;
-        },
-        get totalTokens() {
-          return this.fleet.profiles?.reduce((sum, p) => sum + (p.tokens || 0), 0) || 0;
-        },
-        get totalCost() {
-          return this.fleet.profiles?.reduce((sum, p) => sum + (p.cost || 0), 0) || 0;
-        },
-
-        // Helpers
-        formatNum(n) {
-          if (!n) return '0';
-          if (n >= 1e9) return (n / 1e9).toFixed(1) + 'B';
-          if (n >= 1e6) return (n / 1e6).toFixed(1) + 'M';
-          if (n >= 1e3) return (n / 1e3).toFixed(1) + 'K';
-          return String(n);
-        },
-        stageBg(icon) { return this.stageColors[icon] || 'rgba(255,255,255,0.03)'; },
-        stageBorder(icon) { return this.stageBorders[icon] || 'rgba(255,255,255,0.06)'; },
-
-        // API
-        async fetchAPI(url) {
-          try {
-            const res = await fetch(url);
-            return await res.json();
-          } catch { return null; }
-        },
+        // ── API ──
+        async fetchAPI(url) { try { const r = await fetch(url); return await r.json(); } catch { return null; } },
 
         async fetchAll() {
           const [fleet, gateway, cron, pipeline, system, activity] = await Promise.all([
-            this.fetchAPI('/api/fleet'),
-            this.fetchAPI('/api/gateway'),
-            this.fetchAPI('/api/cron'),
-            this.fetchAPI('/api/pipeline'),
-            this.fetchAPI('/api/system'),
-            this.fetchAPI('/api/activity'),
+            this.fetchAPI('/api/fleet'), this.fetchAPI('/api/gateway'), this.fetchAPI('/api/cron'),
+            this.fetchAPI('/api/pipeline'), this.fetchAPI('/api/system'), this.fetchAPI('/api/activity'),
           ]);
-          if (fleet) this.fleet = fleet;
+          if (fleet) { this.fleetRaw = fleet; this.genSparklines(); }
           if (gateway) this.gatewayData = gateway;
           if (cron) this.cronJobs = cron.jobs || [];
-          if (pipeline) { 
-            this.pipelineStages = pipeline.stages || [];
+          if (pipeline) {
+            const st = pipeline.stages || [];
+            this.pipelineBranch = st.slice(2); this.pipelineStages = st.slice(0, 2);
             this.pipelineDoc = pipeline.document || '';
-            // Split stages into main flow and branches
-            this.pipelineBranch = this.pipelineStages.slice(2);
-            this.pipelineStages = this.pipelineStages.slice(0, 2);
           }
           if (system) this.systemData = system;
           if (activity) this.activityFeed = activity.events || [];
-          this.connected = true;
-          this.loading = false;
+          this.connected = true; this.loading = false;
           this.lastUpdate = new Date().toLocaleTimeString();
         },
 
+        genSparklines() {
+          // Generate synthetic sparklines based on real data volume
+          const p = this.fleetRaw.profiles || [];
+          const totalTokens = p.reduce((s, pr) => s + (pr.tokens || 0), 0);
+          const count = 12;
+          const base = Math.max(totalTokens / count, 10);
+          this.tokenHistory = Array.from({ length: count }, (_, i) => base * (0.5 + Math.sin(i * 0.8) * 0.3 + Math.random() * 0.2));
+        },
+
+        // ── Profile Detail ──
         async openProfile(name) {
-          this.drawerProfile = this.fleet.profiles?.find(p => p.name === name) || { name };
-          this.drawerDetail = null;
-          this.drawerOpen = true;
+          this.drawerProfile = this.fleetProfiles.find(p => p.name === name) || { name };
+          this.drawerDetail = null; this.drawerOpen = true;
           const detail = await this.fetchAPI('/api/profile/' + name);
           if (detail) this.drawerDetail = detail;
         },
 
-        // SSE
+        // ── SSE ──
         initSSE() {
-          const evtSource = new EventSource('/events');
-          evtSource.addEventListener('update', (e) => {
+          const es = new EventSource('/events');
+          es.addEventListener('update', e => {
             try {
-              const data = JSON.parse(e.data);
-              if (data.fleet) this.fleet = data.fleet;
-              if (data.gateway) this.gatewayData = data.gateway;
-              if (data.system) this.systemData = data.system;
-              this.connected = true;
-              this.loading = false;
+              const d = JSON.parse(e.data);
+              if (d.fleet) { this.fleetRaw = d.fleet; this.genSparklines(); }
+              if (d.gateway) this.gatewayData = d.gateway;
+              if (d.system) this.systemData = d.system;
+              this.connected = true; this.loading = false;
               this.lastUpdate = new Date().toLocaleTimeString();
             } catch {}
           });
-          evtSource.onerror = () => {
-            this.connected = false;
-          };
+          es.onerror = () => { this.connected = false; };
         },
 
+        // ── Init ──
         init() {
-          this.fetchAll().then(() => {
-            this.initSSE();
-          });
+          this.fetchAll().then(() => { this.initSSE(); });
         }
       };
     }
