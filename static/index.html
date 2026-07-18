@@ -975,7 +975,7 @@ Loading Skeleton -->
         // ── SSE ──
         initSSE() {
           const es = new EventSource('/events');
-          es.addEventListener('update', e => {
+          es.addEventListener('update', async e => {
             try {
               const d = JSON.parse(e.data);
               if (d.fleet) { this.fleetRaw = d.fleet; this.genSparklines(); }
