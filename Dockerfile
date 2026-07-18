@@ -24,8 +24,9 @@ USER hermes
 EXPOSE 2800
 
 ENV HERMES_HOME=/data/hermes
+ENV PORT=2800
 
-HEALTHCHECK --interval=10s --timeout=3s --start-period=3s --retries=3 \
-  CMD python3 -c "import urllib.request; urllib.request.urlopen('http://localhost:2800/health')" || exit 1
+HEALTHCHECK --interval=15s --timeout=5s --start-period=10s --retries=5 \
+  CMD python3 -c "import urllib.request,os; urllib.request.urlopen('http://localhost:' + os.environ.get('PORT','2800') + '/health')" || exit 1
 
-ENTRYPOINT ["python3", "server.py"]
+ENTRYPOINT ["python3", "-c", "import os; from server import app; import uvicorn; uvicorn.run(app, host='0.0.0.0', port=int(os.environ.get('PORT','2800')))"]

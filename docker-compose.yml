@@ -8,12 +8,13 @@ services:
     ports:
       - "2800:2800"
     volumes:
-      - oi7qh9aiw5s4sfs4h0fozwrv_hermes-home:/data/hermes:ro
+      - hermes-home:/data/hermes:ro
     environment:
       - HERMES_HOME=/data/hermes
+      - PORT=2800
     healthcheck:
-      test: ["CMD", "python3", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:2800/health')"]
-      interval: 10s
-      timeout: 3s
-      retries: 3
-      start_period: 3s
+      test: ["CMD", "python3", "-c", "import urllib.request,os; urllib.request.urlopen('http://localhost:'+os.environ.get('PORT','2800')+'/health')"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
