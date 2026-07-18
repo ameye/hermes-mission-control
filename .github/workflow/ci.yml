@@ -1,1 +1,30 @@
+name: Build & Push Mission Control Image
 
+on:
+  push:
+    branches: [ main ] # This runs whenever code is pushed to the 'main' branch
+
+jobs:
+  build_and_push:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # Step 1: Login to GitHub Container Registry (GHCR)
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # Step 2: Build the Docker Image
+      - name: Build Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: . # Assumes you are running this in the root of the repo
+          push: true
+          tags: ghcr.io/${{ github.repository }}:latest
+
+      # The resulting image is now available at ghcr.io/ameye/hermes-mission-control-repo:latest
