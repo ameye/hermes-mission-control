@@ -25,7 +25,7 @@ EXPOSE 2800
 
 ENV HERMES_HOME=/data/hermes
 
-HEALTHCHECK --interval=30s --timeout=5s --start-period=5s --retries=3 \
-  CMD python3 -c "import urllib.request; urllib.request.urlopen('http://localhost:2800/api/fleet')" || exit 1
+HEALTHCHECK --interval=10s --timeout=3s --start-period=3s --retries=3 \
+  CMD python3 -c "import urllib.request; urllib.request.urlopen('http://localhost:2800/health')" || exit 1
 
 ENTRYPOINT ["python3", "server.py"]

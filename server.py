@@ -101,6 +101,16 @@ def _ts_to_rel(ts: Optional[float]) -> str:
 # ── API Endpoints ───────────────────────────────────────────────────────
 
 
+@app.get("/health")
+async def health():
+    """Fast health check — no DB queries, just confirms server is alive."""
+    return {
+        "status": "ok",
+        "hermes_home": str(HERMES_HOME),
+        "profiles_dir_exists": PROFILES_DIR.exists(),
+    }
+
+
 @app.get("/")
 async def root():
     """Serve the dashboard HTML."""

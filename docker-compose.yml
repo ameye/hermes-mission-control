@@ -13,8 +13,8 @@ services:
     environment:
       - HERMES_HOME=/data/hermes
     healthcheck:
-      test: ["CMD", "python3", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:2800/api/fleet')"]
-      interval: 30s
-      timeout: 5s
+      test: ["CMD", "python3", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:2800/health')"]
+      interval: 10s
+      timeout: 3s
       retries: 3
-      start_period: 5s
+      start_period: 3s
