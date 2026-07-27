@@ -4,8 +4,8 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Hermes Mission Control</title>
-  <script src="https://cdn.tailwindcss.com"></script>
-  <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+  <script src="https://cdn.tailwindcss.com/3.4.17"></script>
+  <script src="https://unpkg.com/alpinejs@3.14.8/dist/cdn.min.js" defer></script>
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap');
     * { font-family: 'Inter', system-ui, sans-serif; }
@@ -930,28 +930,34 @@ Loading Skeleton -->
         },
 
         async fetchAll() {
-          const [fleet, gateway, cron, pipeline, system, activity] = await Promise.all([
-            this.fetchAPI('/api/fleet'), this.fetchAPI('/api/gateway'), this.fetchAPI('/api/cron'),
-            this.fetchAPI('/api/pipeline'), this.fetchAPI('/api/system'), this.fetchAPI('/api/activity'),
-          ]);
-          if (fleet) { this.fleetRaw = fleet; this.genSparklines(); }
-          if (gateway) this.gatewayData = gateway;
-          if (cron) this.cronJobs = cron.jobs || [];
-          if (pipeline) {
-            const st = pipeline.stages || [];
-            this.pipelineBranch = st.slice(2); this.pipelineStages = st.slice(0, 2);
-            this.pipelineDoc = pipeline.document || '';
-          }
-          if (system) this.systemData = system;
-          if (activity) this.activityFeed = activity.events || [];
-          // New tabs
-          const brain = await this.fetchAPI('/api/brain');
-          if (brain) this.brainData = brain;
-          const analytics = await this.fetchAPI('/api/analytics/tokens');
-          if (analytics) this.analyticsData = analytics;
-          const workspaces = await this.fetchAPI('/api/workspaces');
-          if (workspaces) this.workspaceData = workspaces;
-          this.connected = true; this.loading = false;
+          // Safety timeout: force loading to clear after 8s even if some calls hang
+          const safety = setTimeout(() => { this.loading = false; }, 8000);
+          try {
+            const [fleet, gateway, cron, pipeline, system, activity] = await Promise.all([
+              this.fetchAPI('/api/fleet'), this.fetchAPI('/api/gateway'), this.fetchAPI('/api/cron'),
+              this.fetchAPI('/api/pipeline'), this.fetchAPI('/api/system'), this.fetchAPI('/api/activity'),
+            ]);
+            if (fleet) { this.fleetRaw = fleet; this.genSparklines(); }
+            if (gateway) this.gatewayData = gateway;
+            if (cron) this.cronJobs = cron.jobs || [];
+            if (pipeline) {
+              const st = pipeline.stages || [];
+              this.pipelineBranch = st.slice(2); this.pipelineStages = st.slice(0, 2);
+              this.pipelineDoc = pipeline.document || '';
+            }
+            if (system) this.systemData = system;
+            if (activity) this.activityFeed = activity.events || [];
+            // New tabs — fetched in parallel with timeout
+            const [brain, analytics, workspaces] = await Promise.all([
+              this.fetchAPI('/api/brain'), this.fetchAPI('/api/analytics/tokens'), this.fetchAPI('/api/workspaces'),
+            ]);
+            if (brain) this.brainData = brain;
+            if (analytics) this.analyticsData = analytics;
+            if (workspaces) this.workspaceData = workspaces;
+            this.connected = true;
+          } catch(e) { console.error('Fetch error:', e); }
+          clearTimeout(safety);
+          this.loading = false;
           this.lastUpdate = new Date().toLocaleTimeString();
         },
 
@@ -975,18 +981,17 @@ Loading Skeleton -->
         // ── SSE ──
         initSSE() {
           const es = new EventSource('/events');
-          es.addEventListener('update', async e => {
+          es.addEventListener('update', e => {
             try {
               const d = JSON.parse(e.data);
               if (d.fleet) { this.fleetRaw = d.fleet; this.genSparklines(); }
               if (d.gateway) this.gatewayData = d.gateway;
               if (d.system) this.systemData = d.system;
-              const brain = await this.fetchAPI('/api/brain');
-              if (brain) this.brainData = brain;
-              const analytics = await this.fetchAPI('/api/analytics/tokens');
-              if (analytics) this.analyticsData = analytics;
               this.connected = true; this.loading = false;
               this.lastUpdate = new Date().toLocaleTimeString();
+              // Refresh brain & analytics in background
+              this.fetchAPI('/api/brain').then(b => { if(b) this.brainData = b; });
+              this.fetchAPI('/api/analytics/tokens').then(a => { if(a) this.analyticsData = a; });
             } catch {}
           });
           es.onerror = () => { this.connected = false; };
