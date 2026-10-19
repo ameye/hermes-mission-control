@@ -1,0 +1,39 @@
+services:
+  # ── Hermes WebUI ────────────────────────────────────────────
+  hermes-webui:
+    build: /app
+    container_name: hermes-webui
+    ports:
+      - "127.0.0.1:8787:8787"
+    volumes:
+      - ${HERMES_HOME:-${HOME}/.hermes}:/home/hermeswebui/.hermes
+      - ${HERMES_WORKSPACE:-${HOME}/workspace}:/workspace
+    environment:
+      - WANTED_UID=${UID:-1000}
+      - WANTED_GID=${GID:-1000}
+      - HERMES_WEBUI_HOST=0.0.0.0
+      - HERMES_WEBUI_PORT=8787
+      - HERMES_WEBUI_STATE_DIR=/home/hermeswebui/.hermes/webui
+    restart: unless-stopped
+
+  # ── Hermes Mission Control Dashboard ─────────────────────────
+  mission-control:
+    build:
+      context: /workspace/hermes-mission-control
+      dockerfile: Dockerfile
+    container_name: hermes-mission-control
+    restart: unless-stopped
+    ports:
+      - "2800:2800"
+    volumes:
+      - ${HERMES_HOME:-${HOME}/.hermes}:/data/hermes:ro
+    environment:
+      - HERMES_HOME=/data/hermes
+    depends_on:
+      - hermes-webui
+    healthcheck:
+      test: ["CMD", "python3", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:2800/health')"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+      start_period: 3s
